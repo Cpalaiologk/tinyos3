@@ -55,6 +55,9 @@ Mutex active_threads_spinlock = MUTEX_INIT;
 
 #define THREAD_SIZE  (THREAD_TCB_SIZE+THREAD_STACK_SIZE)
 
+/* index of schedule*/
+#define NUM_OF_QUEUES 3
+
 //#define MMAPPED_THREAD_MEM 
 #ifdef MMAPPED_THREAD_MEM 
 
@@ -183,7 +186,7 @@ void release_TCB(TCB* tcb)
 /*
  *  Note: the scheduler routines are all in the non-preemptive domain.
  */
-
+  
 
 /* Core control blocks */
 CCB cctx[MAX_CORES];
@@ -199,9 +202,8 @@ CCB cctx[MAX_CORES];
   Both of these structures are protected by @c sched_spinlock.
 */
 
-
-rlnode SCHED;                         /* The scheduler queue */
-rlnode TIMEOUT_LIST;				  /* The list of threads with a timeout */
+rlnode SCHED[NUM_OF_QUEUES];            /* The scheduler queue */
+rlnode TIMEOUT_LIST;				           /* The list of threads with a timeout */
 Mutex sched_spinlock = MUTEX_INIT;    /* spinlock for scheduler queue */
 
 
@@ -251,6 +253,7 @@ static void sched_register_timeout(TCB* tcb, TimerDuration timeout)
 static void sched_queue_add(TCB* tcb)
 {
   /* Insert at the end of the scheduling list */
+  
   rlist_push_back(& SCHED, & tcb->sched_node);
 
   /* Restart possibly halted cores */
@@ -302,8 +305,16 @@ static TCB* sched_queue_select()
   		sched_make_ready(tcb);
   }
 
+  rlnode * sel = NULL;
+
   /* Get the head of the SCHED list */
-  rlnode * sel = rlist_pop_front(& SCHED);
+  for (int i = 0 ; i <= NUM_OF_QUEUES-1 ; i++)
+  {
+    if( SCHED[i] != NULL)
+    {
+       sel = rlist_pop_front(& SCHED[i]);
+    }
+  }
 
   return sel->tcb;  /* When the list is empty, this is NULL */
 } 

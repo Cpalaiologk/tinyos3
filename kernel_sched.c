@@ -56,7 +56,7 @@ Mutex active_threads_spinlock = MUTEX_INIT;
 #define THREAD_SIZE  (THREAD_TCB_SIZE+THREAD_STACK_SIZE)
 
 /* index of schedule*/
-#define NUM_OF_QUEUES 3
+#define NUM_OF_QUEUES 2
 
 //#define MMAPPED_THREAD_MEM 
 #ifdef MMAPPED_THREAD_MEM 
@@ -254,7 +254,7 @@ static void sched_queue_add(TCB* tcb)
 {
   /* Insert at the end of the scheduling list */
   
-  rlist_push_back(& SCHED, & tcb->sched_node);
+  rlist_push_back(& SCHED[0], & tcb->sched_node);
 
   /* Restart possibly halted cores */
   cpu_core_restart_one();
@@ -306,17 +306,18 @@ static TCB* sched_queue_select()
   }
 
   rlnode * sel = NULL;
-
   /* Get the head of the SCHED list */
-  for (int i = 0 ; i <= NUM_OF_QUEUES-1 ; i++)
+  for (int i = 0 ; i <= NUM_OF_QUEUES - 1 ; i++)
   {
-    if( SCHED[i] != NULL)
+    if(! is_rlist_empty(& SCHED[i]) )
     {
        sel = rlist_pop_front(& SCHED[i]);
+       return sel->tcb;
     }
   }
 
-  return sel->tcb;  /* When the list is empty, this is NULL */
+return NULL;/* When the list is empty, this is NULL */
+
 } 
 
 
@@ -397,7 +398,6 @@ void yield(enum SCHED_CAUSE cause)
   int preempt = preempt_off;
 
   TCB* current = CURTHREAD;  /* Make a local copy of current process, for speed */
-
   int current_ready = 0;
 
   Mutex_Lock(& sched_spinlock);
@@ -421,12 +421,24 @@ void yield(enum SCHED_CAUSE cause)
   /* Get next */
   TCB* next = sched_queue_select();
 
+  switch(cause)
+  {
+    case SCHED_QUANTUM:
+      
+    default : 
+      ;
+  }
+
   /* Maybe there was nothing ready in the scheduler queue ? */
   if(next==NULL) {
-    if(current_ready)
+    if(current_ready){
       next = current;
-    else
+      fprintf(stderr, "iiiiiifffffff\n" );
+    }
+    else{
       next = & CURCORE.idle_thread;
+      fprintf(stderr, "eeeeeeeeelsssssssseeeeeeeeeeee\n" );
+    }
   }
 
   /* ok, link the current and next TCB, for the gain phase */
@@ -521,7 +533,10 @@ static void idle_thread()
  */
 void initialize_scheduler()
 {
-  rlnode_init(&SCHED, NULL);
+  for(int i = 0 ; i <= NUM_OF_QUEUES-1 ; i++)
+  {
+    rlnode_init(&SCHED[i],NULL);
+  }
   rlnode_init(&TIMEOUT_LIST, NULL);
 }
 

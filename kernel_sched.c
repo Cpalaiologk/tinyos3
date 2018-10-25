@@ -1,4 +1,3 @@
-
 #include <assert.h>
 #include <sys/mman.h>
 
@@ -15,10 +14,8 @@
 /*
    The thread layout.
   --------------------
-
   On the x86 (Pentium) architecture, the stack grows upward. Therefore, we
   can allocate the TCB at the top of the memory block used as the stack.
-
   +-------------+
   |   TCB       |
   +-------------+
@@ -30,11 +27,9 @@
   +-------------+
   | first frame |
   +-------------+
-
   Advantages: (a) unified memory area for stack and TCB (b) stack overrun will
   crash own thread, before it affects other threads (which may make debugging
   easier).
-
   Disadvantages: The stack cannot grow unless we move the whole TCB. Of course,
   we do not support stack growth anyway!
  */
@@ -195,15 +190,14 @@ CCB cctx[MAX_CORES];
 /*
   The scheduler queue is implemented as a doubly linked list. The
   head and tail of this list are stored in  SCHED.
-	
+  
   Also, the scheduler contains a linked list of all the sleeping
   threads with a timeout.
-
   Both of these structures are protected by @c sched_spinlock.
 */
 
 rlnode SCHED[NUM_OF_QUEUES];            /* The scheduler queue */
-rlnode TIMEOUT_LIST;				           /* The list of threads with a timeout */
+rlnode TIMEOUT_LIST;                   /* The list of threads with a timeout */
 Mutex sched_spinlock = MUTEX_INIT;    /* spinlock for scheduler queue */
 
 
@@ -223,38 +217,36 @@ void ici_handler()
 
 /*
   Possibly add TCB to the scheduler timeout list.
-
   *** MUST BE CALLED WITH sched_spinlock HELD ***
 */
 static void sched_register_timeout(TCB* tcb, TimerDuration timeout)
 {
   if(timeout!=NO_TIMEOUT){
 
-  	/* set the wakeup time */
-  	TimerDuration curtime = bios_clock();
-  	tcb->wakeup_time = (timeout==NO_TIMEOUT) ? NO_TIMEOUT : curtime+timeout;
+    /* set the wakeup time */
+    TimerDuration curtime = bios_clock();
+    tcb->wakeup_time = (timeout==NO_TIMEOUT) ? NO_TIMEOUT : curtime+timeout;
 
-  	/* add to the TIMEOUT_LIST in sorted order */
-  	rlnode* n = TIMEOUT_LIST.next;
-  	for( ; n!=&TIMEOUT_LIST; n=n->next) 
-  		/* skip earlier entries */
-  		if(tcb->wakeup_time < n->tcb->wakeup_time) break;
-  	/* insert before n */
-	rl_splice(n->prev, & tcb->sched_node);
+    /* add to the TIMEOUT_LIST in sorted order */
+    rlnode* n = TIMEOUT_LIST.next;
+    for( ; n!=&TIMEOUT_LIST; n=n->next) 
+      /* skip earlier entries */
+      if(tcb->wakeup_time < n->tcb->wakeup_time) break;
+    /* insert before n */
+  rl_splice(n->prev, & tcb->sched_node);
   }
 }
 
 
 /*
   Add TCB to the end of the scheduler list.
-
   *** MUST BE CALLED WITH sched_spinlock HELD ***
 */
 static void sched_queue_add(TCB* tcb)
 {
   /* Insert at the end of the scheduling list */
   
-  rlist_push_back(& SCHED[0], & tcb->sched_node);
+  rlist_push_back(& SCHED[0], & tcb->sched_node); //bazei to deytero orisma (enas typoy rlonode deikths toy TCB) sto prwto (lista)
 
   /* Restart possibly halted cores */
   cpu_core_restart_one();
@@ -262,35 +254,33 @@ static void sched_queue_add(TCB* tcb)
 
 
 /*
-	Adjust the state of a thread to make it READY.
-
-    *** MUST BE CALLED WITH sched_spinlock HELD ***	
+  Adjust the state of a thread to make it READY.
+    *** MUST BE CALLED WITH sched_spinlock HELD *** 
  */
 static void sched_make_ready(TCB* tcb)
 {
-	assert(tcb->state == STOPPED || tcb->state == INIT);
+  assert(tcb->state == STOPPED || tcb->state == INIT);
 
-	/* Possibly remove from TIMEOUT_LIST */
-	if(tcb->wakeup_time != NO_TIMEOUT) {
-		/* tcb is in TIMEOUT_LIST, fix it */
-		assert(tcb->sched_node.next != &(tcb->sched_node) && tcb->state == STOPPED);
-		rlist_remove(& tcb->sched_node);
-		tcb->wakeup_time = NO_TIMEOUT;
-	}
+  /* Possibly remove from TIMEOUT_LIST */
+  if(tcb->wakeup_time != NO_TIMEOUT) {
+    /* tcb is in TIMEOUT_LIST, fix it */
+    assert(tcb->sched_node.next != &(tcb->sched_node) && tcb->state == STOPPED);
+    rlist_remove(& tcb->sched_node);
+    tcb->wakeup_time = NO_TIMEOUT;
+  }
 
-	/* Mark as ready */
-	tcb->state = READY;
+  /* Mark as ready */
+  tcb->state = READY;
 
-	/* Possibly add to the scheduler queue */
-	if(tcb->phase == CTX_CLEAN) 
-		sched_queue_add(tcb);
+  /* Possibly add to the scheduler queue */
+  if(tcb->phase == CTX_CLEAN) 
+    sched_queue_add(tcb);
 }
 
 
 /*
   Remove the head of the scheduler list, if any, and
   return it. Return NULL if the list is empty.
-
   *** MUST BE CALLED WITH sched_spinlock HELD ***
 */
 static TCB* sched_queue_select()
@@ -299,10 +289,10 @@ static TCB* sched_queue_select()
   /* Empty the timeout list up to the current time and wake up each thread */
   TimerDuration curtime = bios_clock();
   while(! is_rlist_empty(&TIMEOUT_LIST)) {
-  		TCB* tcb = TIMEOUT_LIST.next->tcb;
-  		if(tcb->wakeup_time > curtime)
-  			break;
-  		sched_make_ready(tcb);
+      TCB* tcb = TIMEOUT_LIST.next->tcb;
+      if(tcb->wakeup_time > curtime)
+        break;
+      sched_make_ready(tcb);
   }
 
   rlnode * sel = NULL;
@@ -326,26 +316,26 @@ return NULL;/* When the list is empty, this is NULL */
  */
 int wakeup(TCB* tcb)
 {
-	int ret = 0;
+  int ret = 0;
 
-	/* Preemption off */
-	int oldpre = preempt_off;
+  /* Preemption off */
+  int oldpre = preempt_off;
 
-	/* To touch tcb->state, we must get the spinlock. */
-	Mutex_Lock(& sched_spinlock);
+  /* To touch tcb->state, we must get the spinlock. */
+  Mutex_Lock(& sched_spinlock);
 
-	if(tcb->state==STOPPED || tcb->state==INIT) {
-		sched_make_ready(tcb);
-		ret = 1;		
-	}
+  if(tcb->state==STOPPED || tcb->state==INIT) {
+    sched_make_ready(tcb);
+    ret = 1;    
+  }
 
 
-	Mutex_Unlock(& sched_spinlock);
+  Mutex_Unlock(& sched_spinlock);
 
-	/* Restore preemption state */
-	if(oldpre) preempt_on;
+  /* Restore preemption state */
+  if(oldpre) preempt_on;
 
-	return ret;
+  return ret;
 }
 
 
@@ -371,7 +361,7 @@ void sleep_releasing(Thread_state state, Mutex* mx, enum SCHED_CAUSE cause, Time
 
   /* register the timeout (if any) for the sleeping thread */
   if(state!=EXITED) 
-  	sched_register_timeout(tcb, timeout);
+    sched_register_timeout(tcb, timeout);
 
   /* Release mx */
   if(mx!=NULL) Mutex_Unlock(mx);
@@ -423,11 +413,38 @@ void yield(enum SCHED_CAUSE cause)
 
   switch(cause)
   {
-    case SCHED_QUANTUM:
-      
-    default : 
+    case SCHED_QUANTUM: /**< The quantum has expired */
+      fprintf(stderr, "QUANTUM\n");
+      // current->priority +=1;
+      break;
+    case SCHED_IO: /**< The thread is waiting for I/O */
+      fprintf(stderr, "IO\n");
+      //priority --
+      break;
+    case SCHED_MUTEX: /**< Mutex_Lock yielded on contention */
+      fprintf(stderr, "MUTEX\n");
+      break;
+    case SCHED_PIPE: /**< Sleep at a pipe or socket */
+      fprintf(stderr, "PIPE\n");
+      break;
+    case SCHED_POLL: /**< The thread is polling a device */
+      fprintf(stderr, "POLL\n");
+      break;
+    case SCHED_IDLE: /**< The idle thread called yield */
+      fprintf(stderr, "IDLE\n");
+      break;
+    case SCHED_USER: /**< User-space code called yield */
+      fprintf(stderr, "USER\n");
+      break;
+
+    default : fprintf(stderr, "DEFAULT\n");
       ;
   }
+
+//   Αν ένα νήμα δεν εξάντλησε το quantum του για kάποιο άλλο λόγο η προτεραιότητά του παραμένει
+// αμετάβλητη.
+// • Νήματα τα οποία περιμένουν για πολλή ώρα στην ουρά τους «(πολλή ώρα» σημαίνει ότι έχουν βγει
+// από την ουρά «πολλά» νήματα), τότε αυξάνεται η προτεραιότητά τους kατά 1.
 
   /* Maybe there was nothing ready in the scheduler queue ? */
   if(next==NULL) {
@@ -465,7 +482,6 @@ void yield(enum SCHED_CAUSE cause)
   This is done mostly from inside yield(). 
   However, for threads that are executed for the first time, this 
   has to happen in thread_start.
-
   The 'preempt' argument determines whether preemption is turned on
   in the new timeslice. When returning to threads in the non-preemptive
   domain (e.g., waiting at some driver), we need to not turn preemption
@@ -477,22 +493,22 @@ void gain(int preempt)
   Mutex_Lock(& sched_spinlock);
 
   /* Mark current state */
-  TCB* current = CURTHREAD; 
-  TCB* prev = current->prev;
+  TCB* current = CURTHREAD; //deixnei sto thread poy ekteleitai twra
+  TCB* prev = current->prev; //deixnei sto prohgoymeno thread ap ayto poy ekteleitai twra
 
-  current->state = RUNNING;
-  current->phase = CTX_DIRTY;
+  current->state = RUNNING; //kanei to state aytoy poy twra ekteleitai "RUNNING"
+  current->phase = CTX_DIRTY; //shmainei oti ta periexomena toy TCB einai skoypidia (?)
 
   if(current != prev) {
-  	/* Take care of the previous thread */
-    prev->phase = CTX_CLEAN;
+    /* Take care of the previous thread */
+    prev->phase = CTX_CLEAN; //ta periexomena toy TCB einai enhmerwmena (oxi skoypidia)
     switch(prev->state) 
     {
-      case READY:
-        if(prev->type != IDLE_THREAD) sched_queue_add(prev);
+      case READY: // den polukatalabainw ti kanei edw me th sched_add?
+        if(prev->type != IDLE_THREAD) sched_queue_add(prev); //yparxoyn Normal kai Idle (adranh) threads
         break;
       case EXITED:
-      	release_TCB(prev);
+        release_TCB(prev); //den katalabainw akribws ti kanei alla fantazomai einai gia thn periptwsh poy oloklhrwnetai h diergasia
         break;
       case STOPPED:
         break;
@@ -504,7 +520,7 @@ void gain(int preempt)
   Mutex_Unlock(& sched_spinlock);
 
   /* Reset preemption as needed */
-  if(preempt) preempt_on;
+  if(preempt) preempt_on; //nwritera mesa sth yield eixe apenergopoih8ei ayto
 
   /* Set a 1-quantum alarm */
   bios_set_timer(QUANTUM);
@@ -571,5 +587,3 @@ void run_scheduler()
   cpu_interrupt_handler(ALARM, NULL);
   cpu_interrupt_handler(ICI, NULL);
 }
-
-

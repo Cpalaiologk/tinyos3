@@ -51,7 +51,7 @@ Mutex active_threads_spinlock = MUTEX_INIT;
 #define THREAD_SIZE  (THREAD_TCB_SIZE+THREAD_STACK_SIZE)
 
 /* index of schedule*/
-#define NUM_OF_QUEUES 2
+#define NUM_OF_QUEUES 3
 
 //#define MMAPPED_THREAD_MEM 
 #ifdef MMAPPED_THREAD_MEM 
@@ -131,6 +131,7 @@ TCB* spawn_thread(PCB* pcb, void (*func)())
   tcb->phase = CTX_CLEAN;
   tcb->thread_func = func;
   tcb->wakeup_time = NO_TIMEOUT;
+  tcb->priority = 0;
   rlnode_init(& tcb->sched_node, tcb);  /* Intrusive list node */
 
 
@@ -246,7 +247,7 @@ static void sched_queue_add(TCB* tcb)
 {
   /* Insert at the end of the scheduling list */
   
-  rlist_push_back(& SCHED[0], & tcb->sched_node); //bazei to deytero orisma (enas typoy rlonode deikths toy TCB) sto prwto (lista)
+  rlist_push_back(& SCHED[tcb->priority], & tcb->sched_node); //bazei to deytero orisma (enas typoy rlonode deikths toy TCB) sto prwto (lista)
 
   /* Restart possibly halted cores */
   cpu_core_restart_one();
@@ -294,11 +295,13 @@ static TCB* sched_queue_select()
         break;
       sched_make_ready(tcb);
   }
-
+  // fprintf(stderr, "To mege8os ths prwths listas einai %d\n", rlist_len(& SCHED[0]) );
   rlnode * sel = NULL;
   /* Get the head of the SCHED list */
   for (int i = 0 ; i <= NUM_OF_QUEUES - 1 ; i++)
   {
+    //fprintf(stderr, "To mege8os ths listas einai %d kai to i einai %d\n", rlist_len(& SCHED[i]), i );
+
     if(! is_rlist_empty(& SCHED[i]) )
     {
        sel = rlist_pop_front(& SCHED[i]);
@@ -388,12 +391,19 @@ void yield(enum SCHED_CAUSE cause)
   int preempt = preempt_off;
 
   TCB* current = CURTHREAD;  /* Make a local copy of current process, for speed */
+
+  // fprintf(stderr, "CURRENT = %d\n",current );
+
   int current_ready = 0;
 
   Mutex_Lock(& sched_spinlock);
   switch(current->state)
   {
     case RUNNING:
+      if(current->priority < NUM_OF_QUEUES -1) 
+        {
+          current->priority ++ ;
+        }
       current->state = READY;
     case READY: /* We were awakened before we managed to sleep! */
       current_ready = 1;
@@ -410,36 +420,38 @@ void yield(enum SCHED_CAUSE cause)
 
   /* Get next */
   TCB* next = sched_queue_select();
+  // fprintf(stderr, "NEXT prwto = %d\n",next );
 
-  switch(cause)
-  {
-    case SCHED_QUANTUM: /**< The quantum has expired */
-      fprintf(stderr, "QUANTUM\n");
-      // current->priority +=1;
-      break;
-    case SCHED_IO: /**< The thread is waiting for I/O */
-      fprintf(stderr, "IO\n");
-      //priority --
-      break;
-    case SCHED_MUTEX: /**< Mutex_Lock yielded on contention */
-      fprintf(stderr, "MUTEX\n");
-      break;
-    case SCHED_PIPE: /**< Sleep at a pipe or socket */
-      fprintf(stderr, "PIPE\n");
-      break;
-    case SCHED_POLL: /**< The thread is polling a device */
-      fprintf(stderr, "POLL\n");
-      break;
-    case SCHED_IDLE: /**< The idle thread called yield */
-      fprintf(stderr, "IDLE\n");
-      break;
-    case SCHED_USER: /**< User-space code called yield */
-      fprintf(stderr, "USER\n");
-      break;
 
-    default : fprintf(stderr, "DEFAULT\n");
-      ;
-  }
+  // switch(cause)
+  // {
+  //   case SCHED_QUANTUM: /**< The quantum has expired */
+  //     fprintf(stderr, "QUANTUM\n");
+  //     // current->priority +=1;
+  //     break;
+  //   case SCHED_IO: /**< The thread is waiting for I/O */
+  //     fprintf(stderr, "IO\n");
+  //     //priority --
+  //     break;
+  //   case SCHED_MUTEX: /**< Mutex_Lock yielded on contention */
+  //     fprintf(stderr, "MUTEX\n");
+  //     break;
+  //   case SCHED_PIPE: *< Sleep at a pipe or socket 
+  //     fprintf(stderr, "PIPE\n");
+  //     break;
+  //   case SCHED_POLL: /**< The thread is polling a device */
+  //     fprintf(stderr, "POLL\n");
+  //     break;
+  //   case SCHED_IDLE: /**< The idle thread called yield */
+  //     fprintf(stderr, "IDLE\n");
+  //     break;
+  //   case SCHED_USER: /**< User-space code called yield */
+  //     fprintf(stderr, "USER\n");
+  //     break;
+
+  //   default : fprintf(stderr, "DEFAULT\n");
+  //     ;
+  // }
 
 //   Αν ένα νήμα δεν εξάντλησε το quantum του για kάποιο άλλο λόγο η προτεραιότητά του παραμένει
 // αμετάβλητη.
@@ -448,24 +460,29 @@ void yield(enum SCHED_CAUSE cause)
 
   /* Maybe there was nothing ready in the scheduler queue ? */
   if(next==NULL) {
+    // fprintf(stderr, "next=NULL\n");
     if(current_ready){
       next = current;
-      fprintf(stderr, "iiiiiifffffff\n" );
+      // fprintf(stderr, "iiiiiifffffff\n" );
     }
     else{
       next = & CURCORE.idle_thread;
-      fprintf(stderr, "eeeeeeeeelsssssssseeeeeeeeeeee\n" );
+      // fprintf(stderr, "eeeeeeeeelsssssssseeeeeeeeeeee\n" );
     }
   }
+  // fprintf(stderr, "NEXT deytero = %d\n",next );
 
   /* ok, link the current and next TCB, for the gain phase */
-  current->next = next;
+  current->next = next; 
   next->prev = current;
+  
+   // fprintf(stderr, "to priority einai  = %d\n",current->priority );
 
   Mutex_Unlock(& sched_spinlock);
 
   /* Switch contexts */
   if(current!=next) {
+    // fprintf(stderr, "current!=next\n");
     CURTHREAD = next;
     cpu_swap_context( & current->context , & next->context );
   }

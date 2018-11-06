@@ -98,7 +98,9 @@ typedef struct thread_control_block
   Thread_type type;       /**< The type of thread */
   Thread_state state;    /**< The state of the thread */
   Thread_phase phase;    /**< The phase of the thread */
-  int priority ;
+
+  int priority;
+  // char count;
 
   void (*thread_func)();   /**< The function executed by this thread */
 

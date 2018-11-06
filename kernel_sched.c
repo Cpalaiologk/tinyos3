@@ -53,6 +53,7 @@ Mutex active_threads_spinlock = MUTEX_INIT;
 /* index of schedule*/
 #define NUM_OF_QUEUES 3
 
+#define AGING 3
 //#define MMAPPED_THREAD_MEM 
 #ifdef MMAPPED_THREAD_MEM 
 
@@ -132,6 +133,8 @@ TCB* spawn_thread(PCB* pcb, void (*func)())
   tcb->thread_func = func;
   tcb->wakeup_time = NO_TIMEOUT;
   tcb->priority = 0;
+  // tcb->count = 0;
+
   rlnode_init(& tcb->sched_node, tcb);  /* Intrusive list node */
 
 
@@ -395,15 +398,69 @@ void yield(enum SCHED_CAUSE cause)
   // fprintf(stderr, "CURRENT = %d\n",current );
 
   int current_ready = 0;
+  // int list_length = rlist_len(&SCHED[NUM_OF_QUEUES-1]);
+  // rlnode * aging = &SCHED[NUM_OF_QUEUES-1];
+  // TCB *aging_tcb = aging;
 
   Mutex_Lock(& sched_spinlock);
+
   switch(current->state)
   {
     case RUNNING:
-      if(current->priority < NUM_OF_QUEUES -1) 
+      
+    
+      // for(int i = 0 ; i < list_length ; i++)
+      // {
+          
+      //     if (aging_tcb->yield_call_count > AGING)
+      //     {
+      //       fprintf(stderr, "ARXIGOS:%d\n",aging_tcb->yield_call_count );
+
+      //        aging_tcb->priority = 0; //mporei na min einai 0
+      //        aging_tcb->yield_call_count = 0;
+      //     }
+      //     aging_tcb->yield_call_count ++ ;
+      //     aging = aging->next;
+      //     aging_tcb = aging;
+      // }
+
+      if(current->priority < NUM_OF_QUEUES -1) {
+
+        switch(cause)
         {
-          current->priority ++ ;
-        }
+          case SCHED_QUANTUM: /**< The quantum has expired */
+            fprintf(stderr, "QUANTUM\n");
+             current->priority ++;
+             fprintf(stderr, "To priority einai %d\n", current->priority);
+            break;
+          case SCHED_IO: /**< The thread is waiting for I/O */
+            fprintf(stderr, "IO\n");
+            if(current->priority > 0)
+            {
+             current->priority --;
+            }
+            break;
+          case SCHED_MUTEX: /**< Mutex_Lock yielded on contention */
+            fprintf(stderr, "MUTEX\n");
+            current->priority ++;
+            break;
+          case SCHED_PIPE: /**< Sleep at a pipe or socket*/ 
+            fprintf(stderr, "PIPE\n");
+            break;
+          case SCHED_POLL: /**< The thread is polling a device */
+            fprintf(stderr, "POLL\n");
+            break;
+          case SCHED_IDLE: /**< The idle thread called yield */
+            fprintf(stderr, "IDLE\n");
+            break;
+          case SCHED_USER: /**< User-space code called yield */
+            fprintf(stderr, "USER\n");
+           break;
+          default : fprintf(stderr, "DEFAULT\n");
+            assert(0);  /* DEN 3ERWWWWWWWW */
+          }
+      }
+    
       current->state = READY;
     case READY: /* We were awakened before we managed to sleep! */
       current_ready = 1;
@@ -423,38 +480,6 @@ void yield(enum SCHED_CAUSE cause)
   // fprintf(stderr, "NEXT prwto = %d\n",next );
 
 
-  // switch(cause)
-  // {
-  //   case SCHED_QUANTUM: /**< The quantum has expired */
-  //     fprintf(stderr, "QUANTUM\n");
-  //     // current->priority +=1;
-  //     break;
-  //   case SCHED_IO: /**< The thread is waiting for I/O */
-  //     fprintf(stderr, "IO\n");
-  //     //priority --
-  //     break;
-  //   case SCHED_MUTEX: /**< Mutex_Lock yielded on contention */
-  //     fprintf(stderr, "MUTEX\n");
-  //     break;
-  //   case SCHED_PIPE: *< Sleep at a pipe or socket 
-  //     fprintf(stderr, "PIPE\n");
-  //     break;
-  //   case SCHED_POLL: /**< The thread is polling a device */
-  //     fprintf(stderr, "POLL\n");
-  //     break;
-  //   case SCHED_IDLE: /**< The idle thread called yield */
-  //     fprintf(stderr, "IDLE\n");
-  //     break;
-  //   case SCHED_USER: /**< User-space code called yield */
-  //     fprintf(stderr, "USER\n");
-  //     break;
-
-  //   default : fprintf(stderr, "DEFAULT\n");
-  //     ;
-  // }
-
-//   Αν ένα νήμα δεν εξάντλησε το quantum του για kάποιο άλλο λόγο η προτεραιότητά του παραμένει
-// αμετάβλητη.
 // • Νήματα τα οποία περιμένουν για πολλή ώρα στην ουρά τους «(πολλή ώρα» σημαίνει ότι έχουν βγει
 // από την ουρά «πολλά» νήματα), τότε αυξάνεται η προτεραιότητά τους kατά 1.
 

@@ -99,8 +99,10 @@ typedef struct thread_control_block
   Thread_state state;    /**< The state of the thread */
   Thread_phase phase;    /**< The phase of the thread */
 
+  enum SCHED_CAUSE prev_cause;
+
   int priority;
-  // char count;
+  // int yield_call_count;
 
   void (*thread_func)();   /**< The function executed by this thread */
 

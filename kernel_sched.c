@@ -459,9 +459,7 @@ void yield(enum SCHED_CAUSE cause)
       fprintf(stderr, "BAD STATE for current thread %p in yield: %d\n", current, current->state);
       assert(0);  /* It should not be READY or EXITED ! */
   }
-
-// fprintf(stderr, "To boost einai: -------------> %d\n", boost);
-
+  //Isws mporw na t alla3w kai na to kanw pio swsta...
   if(boost > AGING){
     int i, j, list_length;
     boost =0;
@@ -478,16 +476,11 @@ void yield(enum SCHED_CAUSE cause)
     
     for(i=1; i<NUM_OF_QUEUES; i++){
       list_length = rlist_len(&SCHED[NUM_OF_QUEUES-i]);
-      // fprintf(stderr, "MIIIIIIIIIIIIIIIIIIIIIIKE yo my nigga\n");
-      // node = &SCHED[NUM_OF_QUEUES-i];
       node = SCHED[NUM_OF_QUEUES-i].next;
       for (j=0; j<list_length; j++){
-       // fprintf(stderr, "XARHSSSSSSSSSSSSSSSSSSSSSSSSSS\n");
         // fprintf(stderr, "H diey8ynsh toy tcb einai: %d ----->\n",node->tcb );
        node->tcb->priority --;
-       // fprintf(stderr, "ARXIGOSSSSSSSSSSSSSSSSSSSSS\n");
        node = node->next;
-       fprintf(stderr, "MANES SASSSSSSSSSSSSSSSSSSSs\n");
       }
     }
   }

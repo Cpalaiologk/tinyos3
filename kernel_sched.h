@@ -88,6 +88,7 @@ enum SCHED_CAUSE {
 typedef struct thread_control_block
 {
   PCB* owner_pcb;       /**< This is null for a free TCB */
+  PTCB* owner_ptcb;
 
   cpu_context_t context;     /**< The thread context */
 
@@ -107,14 +108,25 @@ typedef struct thread_control_block
   void (*thread_func)();   /**< The function executed by this thread */
 
   TimerDuration wakeup_time; /**< The time this thread will be woken up by the scheduler */
-  rlnode sched_node;      /**< node to use when queueing in the scheduler lists */
+
+  //isws eprepe na xrhsimopoihsoyme ayto....
+  rlnode sched_node;      /**< node to use when queueing in the scheduler lists */ 
 
   struct thread_control_block * prev;  /**< previous context */
   struct thread_control_block * next;  /**< next context */
   
-} TCB;
+} TCB; // to tcb perimenei mia synarthsh void na dw th spawn thread kai thn exec, start main thread
 
-
+typedef struct process_thread_control_block
+{
+  TCB* master_thread; //To prwto thread mesw toy opoioy dhmioyrgoyntai ta alla
+  PCB* owner_pcb; //To PCB apo to opoio dhmioyrgh8hke to PTCB
+  rlnode PTCB_node; // To node poy 8a xrhsimopoioyme gia na kanoyme queue sth lista poy 8a dhmioyrgei h exec
+ //flag gia detached
+  //task
+  //argl
+  //args // monitors kai monitor calls, condition kai action toy join, an ena thread einai detached epistrefw sfalma an exei termatisei h einai detached ektelw toa action, to action einai sfalma h epistrefw status, while condiotion variables, while mpla mpla
+} PTCB;
 
 /** Thread stack size */
 #define THREAD_STACK_SIZE  (128*1024)

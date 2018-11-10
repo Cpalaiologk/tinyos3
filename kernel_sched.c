@@ -127,6 +127,10 @@ TCB* spawn_thread(PCB* pcb, void (*func)())
 
   /* Set the owner */
   tcb->owner_pcb = pcb;
+  
+  // tcb->owner_ptcb = NULL;  
+
+  tcb->owner_ptcb = pcb->ptcb;
 
   /* Initialize the other attributes */
   tcb->type = NORMAL_THREAD;
@@ -135,7 +139,6 @@ TCB* spawn_thread(PCB* pcb, void (*func)())
   tcb->thread_func = func;
   tcb->wakeup_time = NO_TIMEOUT;
   tcb->priority = 0;
-  // tcb->yield_call_count = 0;
 
   rlnode_init(& tcb->sched_node, tcb);  /* Intrusive list node */
 
@@ -176,6 +179,11 @@ void release_TCB(TCB* tcb)
   Mutex_Unlock(&active_threads_spinlock);
 }
 
+void release_PTCB(PTCB* ptcb)
+{ 
+  rlist_remove(& ptcb->PTCB_node);
+  free(ptcb);
+}
 
 /*
  *
@@ -396,7 +404,10 @@ void yield(enum SCHED_CAUSE cause)
   TCB* current = CURTHREAD;  /* Make a local copy of current process, for speed */
   boost+=1;
   // fprintf(stderr, "CURRENT = %d\n",current );
-
+  // if(cause != SCHED_IDLE){
+  // fprintf(stderr, "To ptcb toy Current einai: ----> %d\n", current->owner_ptcb);
+  // fprintf(stderr, "To Current einai: ----> %d\n", current);
+  // }
   int current_ready = 0;
 
   Mutex_Lock(& sched_spinlock);
@@ -609,6 +620,8 @@ void run_scheduler()
   curcore->id = cpu_core_id;
 
   curcore->current_thread = & curcore->idle_thread;
+
+  curcore->idle_thread.owner_ptcb = NULL; //
 
   curcore->idle_thread.owner_pcb = get_pcb(0);
   curcore->idle_thread.type = IDLE_THREAD;

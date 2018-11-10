@@ -122,11 +122,25 @@ typedef struct process_thread_control_block
   TCB* master_thread; //To prwto thread mesw toy opoioy dhmioyrgoyntai ta alla
   PCB* owner_pcb; //To PCB apo to opoio dhmioyrgh8hke to PTCB
   rlnode PTCB_node; // To node poy 8a xrhsimopoioyme gia na kanoyme queue sth lista poy 8a dhmioyrgei h exec
- //flag gia detached
+  //flag gia detached
+  int is_detached; // 1 -> is detached | 0 -> is not detached (joinable)
+
+  int is_exited; // 1 -> is exited | 0 -> is not exited
+
   //task
+  Task main_task;
   //argl
-  //args // monitors kai monitor calls, condition kai action toy join, an ena thread einai detached epistrefw sfalma an exei termatisei h einai detached ektelw toa action, to action einai sfalma h epistrefw status, while condiotion variables, while mpla mpla
+  int argl;
+  //args
+  void* args;
+   // monitors kai monitor calls, condition kai action toy join,
+   // an ena thread einai detached epistrefw sfalma an exei termatisei h einai detached ektelw to action,
+   // to action einai sfalma h epistrefw status, while condiotion variables, while mpla mpla
+  CondVar cv; 
+  int exitval; //isws 8elei na to kanoyme pointer
 } PTCB;
+
+PTCB* create_PTCB(Task task, int argl, void* args, PCB* pcb); //
 
 /** Thread stack size */
 #define THREAD_STACK_SIZE  (128*1024)
@@ -175,6 +189,7 @@ extern CCB cctx[MAX_CORES];
 */
 #define CURPROC  (CURTHREAD->owner_pcb)
 
+#define CURPTHREAD (CURTHREAD->owner_ptcb) //
 
 /**
   @brief A timeout constant, denoting no timeout for sleep.

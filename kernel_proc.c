@@ -39,6 +39,8 @@ static inline void initialize_PCB(PCB* pcb)
   for(int i=0;i<MAX_FILEID;i++)
     pcb->FIDT[i] = NULL;
 
+  rlnode_init(& pcb->PTCB_list, NULL);
+
   rlnode_init(& pcb->children_list, NULL);
   rlnode_init(& pcb->exited_list, NULL);
   rlnode_init(& pcb->children_node, pcb);
@@ -125,6 +127,7 @@ void start_main_thread()
 }
 
 
+
 /*
 	System call to create a new process.
  */
@@ -178,8 +181,19 @@ Pid_t sys_Exec(Task call, int argl, void* args)
     the initialization of the PCB.
    */
   if(call != NULL) {
-    newproc->main_thread = spawn_thread(newproc, start_main_thread);
-    wakeup(newproc->main_thread);
+         // PTCB creation
+     newproc->ptcb = create_PTCB(call, argl, args, newproc);
+
+     // PTCB's master-thread creation
+     newproc->ptcb->master_thread = spawn_thread(newproc, start_main_thread); 
+
+     // matching PTCB's and master_thread's pointers
+     newproc->ptcb->master_thread->owner_ptcb = newproc->ptcb;
+
+     wakeup(newproc->ptcb->master_thread);
+    // ____________________________________________________________________________________
+    // newproc->main_thread = spawn_thread(newproc, start_main_thread);
+    // wakeup(newproc->main_thread);
   }
 
 

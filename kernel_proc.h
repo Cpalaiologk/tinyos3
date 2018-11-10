@@ -41,10 +41,14 @@ typedef struct process_control_block {
   PCB* parent;            /**< Parent's pcb. */
   int exitval;            /**< The exit value */
 
+  PTCB* ptcb;             
+
   TCB* main_thread;       /**< The main thread */
   Task main_task;         /**< The main thread's function */
   int argl;               /**< The main thread's argument length */
   void* args;             /**< The main thread's argument string */
+
+  rlnode PTCB_list;
 
   rlnode children_list;   /**< List of children */
   rlnode exited_list;     /**< List of exited children */

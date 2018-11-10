@@ -48,6 +48,7 @@ typedef struct process_control_block {
   int argl;               /**< The main thread's argument length */
   void* args;             /**< The main thread's argument string */
 
+  //Mutex ptcb_mx;
   rlnode PTCB_list;
 
   rlnode children_list;   /**< List of children */

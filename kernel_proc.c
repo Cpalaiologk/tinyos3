@@ -117,12 +117,13 @@ void release_PCB(PCB* pcb)
 void start_main_thread()
 {
   int exitval;
-
   Task call =  CURPROC->main_task;
   int argl = CURPROC->argl;
   void* args = CURPROC->args;
 
   exitval = call(argl,args);
+
+  // fprintf(stderr, "TO EXITVAL toy vsam EINAIiiiiiiiiiiiiiiiiiiiii : ---------> %d\n", exitval );
   Exit(exitval);
 }
 

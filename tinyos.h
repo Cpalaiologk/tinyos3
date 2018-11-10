@@ -344,7 +344,7 @@ Tid_t ThreadSelf();
   @param exitval a location where to store the exit value of the joined 
               thread. If NULL, the exit status is not returned.
   @returns 0 on success and -1 on error. Possible errors are:
-    - there is no thread with the given tid in this process. Vtick V
+    - there is no thread with the given tid in this process. V tick V
     - the tid corresponds to the current thread. V tick V
     - the tid corresponds to a detached thread. V tick V
 

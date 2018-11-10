@@ -171,8 +171,7 @@ int SymposiumOfProcesses(int argl, void* args)
   assert(argl == sizeof(symposium_t));
   symposium_t* symp = args;
   int N = symp->N;
-  fprintf(stderr, "To argl einai: ---> %d\n", argl);
-  fprintf(stderr, "To args-N einai: ---> %d\n", symp->N);
+  
 
   /* Initialize structures */
   SymposiumTable S;

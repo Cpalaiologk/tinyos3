@@ -941,29 +941,29 @@ BOOT_TEST(test_create_join_thread,
 }
 
 
-BOOT_TEST(test_exit_many_threads,
-	"Test that a process thread calling Exit will clean up correctly."
-	)
-{
+// BOOT_TEST(test_exit_many_threads,
+// 	"Test that a process thread calling Exit will clean up correctly."
+// 	)
+// {
 
-	int task(int argl, void* args) {
-		fibo(45);
-		return 2;
-	}
+// 	int task(int argl, void* args) {
+// 		fibo(45);
+// 		return 2;
+// 	}
 
-	int mthread(int argl, void* args){
-		for(int i=0;i<5;i++)
-			ASSERT(CreateThread(task, 0, NULL) != NOTHREAD);
+// 	int mthread(int argl, void* args){
+// 		for(int i=0;i<5;i++)
+// 			ASSERT(CreateThread(task, 0, NULL) != NOTHREAD);
 
-		fibo(35);
-		return 0;
-	}
+// 		fibo(35);
+// 		return 0;
+// 	}
 
-	Exec(mthread, 0, NULL);
-	ASSERT(WaitChild(NOPROC, NULL)!=NOPROC);
+// 	Exec(mthread, 0, NULL);
+// 	ASSERT(WaitChild(NOPROC, NULL)!=NOPROC);
 
-	return 0;
-}
+// 	return 0;
+// }
 
 
 
@@ -975,7 +975,7 @@ TEST_SUITE(thread_tests,
 	)
 {
 	&test_create_join_thread,
-	&test_exit_many_threads,
+	//&test_exit_many_threads,
 	NULL
 };
 

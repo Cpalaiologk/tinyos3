@@ -115,11 +115,7 @@ int sys_ThreadJoin(Tid_t tid, int* exitval)
 // Mutex_Lock(&CURPROC->ptcb_mx);
 
     // Spontaneous-wake-up protection loop
-  while( (ptcb->is_exited!=1) ){
-    // fprintf(stderr, "%s\n", "in JOIN() before kernel_wait()");
-    kernel_wait(& ptcb->cv, SCHED_USER); // ???
-    // fprintf(stderr, "%s\n", "in JOIN() after kernel_wait()");
-  }
+
 
   if(rlist_find(&CURPROC->PTCB_list,ptcb,NULL)==NULL){ // - there is no thread with the given tid in this process.
     // Mutex_Unlock(&CURPROC->ptcb_mx);
@@ -140,6 +136,11 @@ int sys_ThreadJoin(Tid_t tid, int* exitval)
     return -1;
   }
 
+  while( (ptcb->is_exited!=1) ){
+    // fprintf(stderr, "%s\n", "in JOIN() before kernel_wait()");
+    kernel_wait(& ptcb->cv, SCHED_USER); // ???
+    // fprintf(stderr, "%s\n", "in JOIN() after kernel_wait()");
+  }
  // Cond_Wait(&CURPROC->ptcb_mx,&ptcb->cv);//This line takes forever to execute
 
   if(exitval!=NULL){//Save exit value
@@ -147,6 +148,7 @@ int sys_ThreadJoin(Tid_t tid, int* exitval)
     // Mutex_Unlock(&CURPROC->ptcb_mx);
     return 0;
   }
+
 
   // Isws 8elei if is exited kai na kanoyme mesa release to thread ama mpei
   // Mutex_Unlock(&CURPROC->ptcb_mx);

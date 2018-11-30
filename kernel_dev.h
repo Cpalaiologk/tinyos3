@@ -10,6 +10,8 @@
 #include "util.h"
 #include "bios.h"
 
+#define BUFFER_SIZE 170000
+
 /**
   @file kernel_dev.h
   @brief Device management.
@@ -33,6 +35,15 @@
   @{ 
 */
 
+typedef struct pipe_control_block{
+  char *buf;
+  int is_closed_read;
+  int is_closed_write;
+  int r_index;
+  int w_index;
+  CondVar empty; //read
+  CondVar full; //write
+} P_CB;
 
 /**
   @brief The device-specific file operations table.
@@ -94,6 +105,10 @@ typedef struct file_operations {
     int (*Close)(void* this);
 } file_ops;
 
+int read_op(void* this, char *buf, unsigned int size);
+int write_op(void* this, const char* buf, unsigned int size);
+int r_Close(void* streamobj);
+int w_Close(void* streamobj);
 
 
 /**

@@ -55,15 +55,15 @@ typedef struct socket_control_block SCB;
 
 typedef struct peer_socket_control_block
 {
-  SCB* peer_socket_cb;
+    SCB* peer_scb;
     P_CB* receiver;
     P_CB* sender;
 }PSCB;
 
 typedef struct listener_socket_control_block
 {
-  CondVar cv_reqs;
-    rlnode req_node;
+  CondVar request_cv;
+  rlnode queue;
 }LSCB;
 
 struct socket_control_block{
@@ -73,12 +73,22 @@ struct socket_control_block{
   int closed;
   int ref_counter;
   union{
-    PSCB pscb;
-    LSCB lscb;
+    PSCB peer;
+    LSCB listener;
   };
 };
 
+typedef struct request_node
+{
+  SCB* req_from; //socket that made the request
+  rlnode rl_node; //Intrusive node (pointers for our queue)
+  CondVar cv;
+  int admit; // accepted or not
+} reqnode;
 
+int s_op_Read(void* fid_t, char *buf, unsigned int size);
+int s_op_Write(void* fid_t, const char *buf,  unsigned int size);
+int s_op_Close(void* streamobj);
 
 
 /**

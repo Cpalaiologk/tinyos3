@@ -8,15 +8,11 @@
 
 
 
-
-
-
-
-/*file_ops socket_ops = {
-  .Read = socket_ops_Read,
-  .Write = socket_ops_Write,
-  .Close = socket_ops_Close
-};*/
+file_ops socket_ops = {
+  .Read = s_op_Read,
+  .Write = s_op_Write,
+  .Close = s_op_Close
+};
 
 
 /*typedef struct request_node
@@ -58,14 +54,14 @@ Fid_t sys_Socket(port_t port)
 	  SCB* scb = malloc(sizeof(SCB));
   	  scb->ref_counter = 0;
   	  scb->closed = 0; 
-  	  scb->fcb = fid[0];  	 
+  	  scb->fcb = get_fcb(fid[0]);  	 
   	  fcb[0]->streamobj = scb;
   	  fcb[0]->streamfunc = & socket_ops;
   	  
   	  // If port == NOPORT, bound socket to it
   	  scb->port = port;
   	  
-  	  scb->socket_type = UNBOUND;
+  	  scb->s_type = UNBOUND;
   	  //SCB->unbound_socket.req_node = NULL; request node initialize
 
   	  return fid[0];
@@ -74,8 +70,62 @@ Fid_t sys_Socket(port_t port)
 	return NOFILE;
 }
 
+int s_op_Read(void* socket, char *buf, unsigned int size){
+	SCB* scb = (SCB*) socket;
+
+	if((scb->s_type == PEER) && (scb->peer.receiver != NULL))
+	{
+		return read_op(scb->peer.receiver, buf, size);
+	}
+	else{
+		return -1;
+	}
+}
+int s_op_Write(void* socket,const char *buf,  unsigned int size){
+	SCB* scb = (SCB*) socket;
+
+	if((scb->s_type == PEER) && (scb->peer.sender != NULL))
+	{
+		return write_op(scb->peer.sender, buf, size);
+	}
+	else{
+		return -1;
+	}
+}
+int s_op_Close(void* streamobj){ //aythn k merikes alles isws tis kanoyme void
+	if(streamobj!=NULL){
+		SCB* scb = (SCB*) streamobj;
+
+		if( (scb->s_type == PEER) ){
+			r_Close(scb->peer.receiver); //isws tis kanoyme void giati de mas xreiazontai oi times epistrofhs toys
+			w_Close(scb->peer.sender);
+		}
+		//if((socket_cb->socket_type == LISTENER))
+			// kernel_broadcast(& socket_cb->listener_socket.cv_reqs); //giati to kanoyme ayto?
+
+		scb->closed = 1;
+		free(scb);
+		scb = NULL;
+		return 0;
+	}
+	return -1;
+}
+
 int sys_Listen(Fid_t sock)
 {
+	FCB* fcb = get_fcb(sock);
+	if(fcb->streamfunc != NULL)	{   
+		SCB* scb = fcb->streamobj;
+
+		if((scb->port>NOPORT && (scb->port<=MAX_PORT)) && (scb->s_type==UNBOUND) && (((PORT_MAP[scb->port])->s_type)!=LISTENER))
+		{
+			scb->s_type = LISTENER;
+			scb->listener.request_cv = COND_INIT;
+			rlnode_init(& scb->listener.queue, NULL);
+
+			return 0;
+		}
+	}
 	return -1;
 }
 

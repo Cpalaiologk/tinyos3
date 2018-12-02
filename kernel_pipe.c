@@ -43,8 +43,8 @@ int sys_Pipe(pipe_t* pipe)
 	//the available file ids for the process are exhausted
 	if(!(reserved_fid))
 	{
-	fprintf(stderr, "%s\n","exhausted fcb" );
-	return -1;
+		fprintf(stderr, "%s\n","exhausted fcb" );
+		return -1;
 	}
 
 	pipe->read = fid[0];
@@ -67,9 +67,9 @@ int sys_Pipe(pipe_t* pipe)
 
 
 
-int read_op(void* fid_t, char *buf, unsigned int size){
+int read_op(void* t, char *buf, unsigned int size){
 
-	P_CB* p_cb = (P_CB*) fid_t;
+	P_CB* p_cb = (P_CB*) t;
 	int counter = 0;
 	if(p_cb->is_closed_read){ //den to grafei sta errors alla einai logiko
 			// fprintf(stderr, "%s\n","GTXSKTPS");
@@ -95,7 +95,7 @@ int read_op(void* fid_t, char *buf, unsigned int size){
 	// ends are open. If the read end is closed, the write end becomes 
 	// unusable: calls on @c Write to it return error. On the other hand,
 	// if the write end is closed, the read end continues to operate until
-	// the buffer is empty, at which point calls to @c Read return 0.
+	// the buffer is empty, at which point calls to @c Read return 0. 
 
 	if(p_cb->is_closed_write){
 			// fprintf(stderr, "%s\n","If 3");
@@ -148,10 +148,10 @@ int read_op(void* fid_t, char *buf, unsigned int size){
 
 
 
-int write_op(void* fid_t, const char* buf, unsigned int size)
+int write_op(void* t, const char* buf, unsigned int size)
 {
 //  fprintf(stderr, "%s\n", "IN Write()");
-  P_CB* p_cb = (P_CB*) fid_t;
+  P_CB* p_cb = (P_CB*) t;
   int counter = 0;
 
 	if(p_cb->is_closed_write==1 || (p_cb->is_closed_read==1)){ //den to grafei sta errors alla einai logiko

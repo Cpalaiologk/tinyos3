@@ -43,7 +43,7 @@ int sys_Pipe(pipe_t* pipe)
 	//the available file ids for the process are exhausted
 	if(!(reserved_fid))
 	{
-	fprintf(stderr, "%s\n","At least one of the FCBs reserved is exhausted" );
+	fprintf(stderr, "%s\n","exhausted fcb" );
 	return -1;
 	}
 

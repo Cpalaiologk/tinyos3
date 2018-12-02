@@ -45,6 +45,42 @@ typedef struct pipe_control_block{
   CondVar full; //write
 } P_CB;
 
+typedef struct socket_control_block SCB;
+
+ typedef enum{
+  UNBOUND,
+  LISTENER,
+  PEER
+}socket_type;
+
+typedef struct peer_socket_control_block
+{
+  SCB* peer_socket_cb;
+    P_CB* receiver;
+    P_CB* sender;
+}PSCB;
+
+typedef struct listener_socket_control_block
+{
+  CondVar cv_reqs;
+    rlnode req_node;
+}LSCB;
+
+struct socket_control_block{
+  FCB * fcb;
+  socket_type s_type;
+  port_t port;
+  int closed;
+  int ref_counter;
+  union{
+    PSCB pscb;
+    LSCB lscb;
+  };
+};
+
+
+
+
 /**
   @brief The device-specific file operations table.
 

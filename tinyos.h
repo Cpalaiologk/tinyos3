@@ -4,6 +4,7 @@
 
 #include <stdint.h>
 
+
 /**
   @file tinyos.h
   @brief Public kernel API
@@ -531,11 +532,12 @@ typedef struct pipe_s {
 */
 int Pipe(pipe_t* pipe);
 
-/*******************************************
- *
- * Sockets (local)
- *
- *******************************************/
+/*******************************************/
+ //*
+ //* Sockets (local)
+ 
+
+/*******************************************/
 
 /**
 	@brief A type for socket ports.

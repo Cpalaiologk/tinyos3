@@ -10,7 +10,7 @@
 #include "util.h"
 #include "bios.h"
 
-#define BUFFER_SIZE 170000
+#define BUFFER_SIZE 8192
 
 /**
   @file kernel_dev.h
@@ -70,7 +70,6 @@ struct socket_control_block{
   FCB * fcb;
   socket_type s_type;
   port_t port;
-  int closed;
   int ref_counter;
   union{
     PSCB peer;
@@ -104,12 +103,12 @@ int s_op_Close(void* streamobj);
  */
 typedef struct file_operations {
 
-	/**
-		@brief Return a stream object on which the other methods will operate.
+  /**
+    @brief Return a stream object on which the other methods will operate.
 
-		This function is passed the minor number of the device to be accessed.
-	*/
-  	void* (*Open)(uint minor);
+    This function is passed the minor number of the device to be accessed.
+  */
+    void* (*Open)(uint minor);
 
 
   /** @brief Read operation.
@@ -159,13 +158,13 @@ int w_Close(void* streamobj);
 
 /**
   @brief The device type.
-	
+  
   The device type of a device determines the driver used.
 */
 typedef enum { 
-	DEV_NULL,    /**< Null device */
-	DEV_SERIAL,  /**< Serial device */
-	DEV_MAX      /**< placeholder for maximum device number */
+  DEV_NULL,    /**< Null device */
+  DEV_SERIAL,  /**< Serial device */
+  DEV_MAX      /**< placeholder for maximum device number */
 }  Device_type;
 
 
@@ -182,8 +181,8 @@ typedef struct device_control_block
   uint devnum;           /**< @brief Number of devices for this major number.
                           */
 
-  file_ops dev_fops;	/**< @brief Device operations
-  							This structure is provided by the device driver. */
+  file_ops dev_fops;  /**< @brief Device operations
+                This structure is provided by the device driver. */
 } DCB;
 
 

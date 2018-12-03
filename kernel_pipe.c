@@ -65,7 +65,7 @@ int sys_Pipe(pipe_t* pipe)
 	return 0;
 }
 
-
+// int a[1]={0};
 
 int read_op(void* t, char *buf, unsigned int size){
 
@@ -107,15 +107,17 @@ int read_op(void* t, char *buf, unsigned int size){
   				// fprintf(stderr, "%s\n","While 2");
   			if((counter == size) || (counter == BUFFER_SIZE) ) 
   			{
-  					// fprintf(stderr, "%s\n","If 4");
-  				return 0;
+  					fprintf(stderr, "%s %d\n","to BUFFER_SIZE einai -->", BUFFER_SIZE);
+  				return counter;
   			} 
   			buf[counter]= p_cb->buf[p_cb->r_index];
   			p_cb->r_index = (p_cb->r_index + 1) % BUFFER_SIZE; // Circular incr this->read_index
+
+  			// fprintf(stderr, "%s %d\n","to r_index einai -->",  p_cb->r_index);
   			counter++; // Incr 
   		}
 
-		return 0;
+		return counter;
 	}
 
     // Regular read       // If read_index reaches write_index (buffer is empty): break // If buf_index reaches end: break
@@ -183,9 +185,14 @@ int write_op(void* t, const char* buf, unsigned int size)
 	 	// Write 1 char from buf[] into this->buf[]
 		p_cb->buf[p_cb->w_index] = buf[counter];
 		p_cb->w_index = (p_cb->w_index + 1) % BUFFER_SIZE; // Circular incr this->write_index
+		// a[0]=a[0]+1;
+		// fprintf(stderr, "%s %d\n","to w_index einai -->",  p_cb->w_index);
+
 		counter++; // Incr counter
 	}
 
+	// fprintf(stderr, "%s %d\n","to counter einai -->",  counter);
+	// fprintf(stderr, "%s %d\n","to a[0] einai -->",  a[0]);
 	// Signal reader(s)
 	kernel_broadcast(& (p_cb->empty) );
 	return counter;

@@ -192,6 +192,8 @@ Pid_t sys_Exec(Task call, int argl, void* args)
      newproc->ptcb->master_thread->owner_ptcb = newproc->ptcb;
 
      wakeup(newproc->ptcb->master_thread);
+
+     newproc->ptcb->ref_counter=0; //?????????????????
     // ____________________________________________________________________________________
     // newproc->main_thread = spawn_thread(newproc, start_main_thread);
     // wakeup(newproc->main_thread);

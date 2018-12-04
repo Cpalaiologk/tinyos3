@@ -4,6 +4,7 @@
 #include "kernel_streams.h"
 #include "kernel_sched.h"
 #include "kernel_cc.h"
+
 /* =============SCB==========================*/
 
 
@@ -37,7 +38,7 @@ Fid_t sys_Socket(port_t port)
 	  //the available file ids for the process are exhausted
 	  if(!(reserved_fid))
 	  {
-		fprintf(stderr, "%s\n","exhausted fcb" );
+		// fprintf(stderr, "%s\n","exhausted fcb" );
 		return NOFILE;
 	  }
 	  SCB* scb = malloc(sizeof(SCB));
@@ -84,14 +85,20 @@ int s_op_Write(void* socket,const char *buf,  unsigned int size){
 }
 int s_op_Close(void* streamobj){ //aythn k merikes alles isws tis kanoyme void
 	if(streamobj!=NULL){
+		fprintf(stderr, "%s\n","KALHSPERAAAAAAAA" );
 		SCB* scb = (SCB*) streamobj;
 
 		if( (scb->s_type == PEER) ){
-			r_Close(scb->peer.receiver); //isws tis kanoyme void giati de mas xreiazontai oi times epistrofhs toys
-			w_Close(scb->peer.sender);
+			int rc = r_Close(scb->peer.receiver); //isws tis kanoyme void giati de mas xreiazontai oi times epistrofhs toys
+			int wc = w_Close(scb->peer.sender);
+			if(!(rc && wc)){ //isws trollies
+		fprintf(stderr, "%s\n","ifffffffffffffffff" );
+				return -1;
+			}
 		}
-		//if((socket_cb->socket_type == LISTENER))
-			// kernel_broadcast(& socket_cb->listener_socket.cv_reqs); //giati to kanoyme ayto?
+		if((scb->s_type == LISTENER)){
+			kernel_broadcast(& scb->listener.request_cv); //giati to kanoyme ayto?
+		}
 
 		free(scb);
 		scb = NULL;
@@ -103,10 +110,10 @@ int s_op_Close(void* streamobj){ //aythn k merikes alles isws tis kanoyme void
 int sys_Listen(Fid_t sock)
 {
 	FCB* fcb = get_fcb(sock);
-	if(fcb->streamfunc != NULL)	{   
+	if((fcb != NULL) && (fcb->streamfunc =& socket_ops))	{   
 		SCB* scb = fcb->streamobj;
 
-		if((scb->port>NOPORT && (scb->port<=MAX_PORT)) && (scb->s_type==UNBOUND) && (((PORT_MAP[scb->port])->s_type)!=LISTENER))
+		if((scb != NULL) && (scb->port>NOPORT && (scb->port<=MAX_PORT)) && (scb->s_type==UNBOUND) && (((PORT_MAP[scb->port])->s_type)!=LISTENER))
 		{
 			scb->s_type = LISTENER;
 			scb->listener.request_cv = COND_INIT;
@@ -121,6 +128,91 @@ int sys_Listen(Fid_t sock)
 
 Fid_t sys_Accept(Fid_t lsock)
 {
+	FCB* fcb = get_fcb(lsock);
+
+	if(fcb!=NULL && fcb->streamfunc != NULL)
+	{	
+		SCB* scb = fcb->streamobj;
+
+		if((scb != NULL) && (scb->port>NOPORT && scb->port<=MAX_PORT) && ((PORT_MAP[scb->port])->s_type == LISTENER) && (scb->s_type == LISTENER)) { //na 3anadoyme toys elegxoys
+			// fprintf(stderr, "%s\n", "in Accept(), after checks" );
+			while(is_rlist_empty(& scb->listener.queue)){
+				kernel_wait(& scb->listener.request_cv, SCHED_PIPE);
+			}
+
+			Fid_t peer2_fid = sys_Socket(scb->port);
+			// fprintf(stderr, "%s %d\n","to scb->port einai -->", scb->port);
+			
+			if(peer2_fid == NOFILE){
+				return NOFILE;
+			}
+
+			FCB* fcb = get_fcb(peer2_fid);
+			SCB* peer2 = fcb->streamobj;
+
+			// fprintf(stderr, "%s %d\n","PONOS SFAIROYLHDESSSSSSSSS", 69);
+			// Fetch client_socket_cb from lsock's queue
+			rlnode* rl_req_node = rlist_pop_front(& scb->listener.queue);
+			reqnode* req_node = rl_req_node->obj;
+			SCB* peer1 = req_node->req_from;
+
+			if(peer1 == NULL || peer2 == NULL )
+			{	
+				//fprintf(stderr, "%s\n", "returning NOFILE (in sys_Accept())" );			
+				return NOFILE;
+			}
+
+			// fprintf(stderr, "%s %d\n","PONOS SFAIROYLHDESSSSSSSSS", 6969);
+
+			pipe_t pipe1;
+			pipe_t pipe2;
+
+			// fprintf(stderr, "%s %d\n","PONOS SFAIROYLHDESSSSSSSSS", 777);
+			sys_Pipe(& pipe1);
+			// fprintf(stderr, "%s %d\n","PONOS SFAIROYLHDESSSSSSSSS", 11111111);
+			sys_Pipe(& pipe2);
+
+			fprintf(stderr, "%s %d\n","to pipe1.read einai -->", pipe1.read);
+			fprintf(stderr, "%s %d\n","to pipe1.write einai -->", pipe1.write);
+
+			FCB* fcb1 = get_fcb(pipe1.read);
+			FCB* fcb3 = get_fcb(pipe1.write);
+			FCB* fcb2 = get_fcb(pipe2.read);
+
+			// fprintf(stderr, "%s %d\n","to fcb->refcount einai -->", fcb->refcount);
+
+			P_CB* pipe_cb1 = fcb1->streamobj;
+			P_CB* pipe_cb2 = fcb2->streamobj;
+			P_CB* pipe_cb3 = fcb3->streamobj;
+			
+			fprintf(stderr, "%s %d\n","to pipe_cb1 einai -->", pipe_cb1);
+			fprintf(stderr, "%s %d\n","to pipe_cb3 einai -->", pipe_cb3);
+
+			if((pipe_cb1 != NULL) && (pipe_cb2 != NULL)) {
+				// Convert server socket to PEER
+				peer2->s_type = PEER;
+				peer2->peer.peer_scb = peer1;
+			  	peer2->peer.sender = pipe_cb2;
+			  	peer2->peer.receiver = pipe_cb1;
+
+			  	// Convert client socket to PEER
+			  	peer1->s_type = PEER;
+			  	peer1->peer.peer_scb = peer2;
+			  	peer1->peer.sender = pipe_cb1;
+			  	peer1->peer.receiver = pipe_cb2;
+			}
+
+			req_node->admit = 1;
+			//fprintf(stderr, "%s\n", "req_node->accepted==1" );
+			kernel_signal(& req_node->cv); //signal???
+			//fprintf(stderr, "%s\n", "broadcasted connect cv." );
+
+			fprintf(stderr, "%s\n", "returning OK from Accept()" );
+			return peer2_fid;
+		}
+	}	
+	
+	//fprintf(stderr, "%s\n", "returning NOFILE" );
 	return NOFILE;
 }
 
@@ -129,7 +221,7 @@ int sys_Connect(Fid_t sock, port_t port, timeout_t timeout)
 {
 	FCB* fcb = get_fcb(sock);
 	int timeout_not_expired;
-	if((fcb->streamfunc!=NULL) && (port>NOPORT && port<=MAX_PORT) ) {
+	if((fcb!=NULL) && (fcb->streamfunc!=NULL) && (port>NOPORT && port<=MAX_PORT) ) {
 		SCB* client1 = fcb->streamobj;
 		SCB* listener = PORT_MAP[port];
 
@@ -143,6 +235,7 @@ int sys_Connect(Fid_t sock, port_t port, timeout_t timeout)
 			rlist_push_back(& (listener->listener.queue), & (req_node->rl_node) );
 			kernel_signal(& listener->listener.request_cv); //broadcast??
 			while(req_node->admit == 0) {	
+
 			//	if(timeout>=0)
 			//	{	
 				//fprintf(stderr, "%s\n", "in Connect() while");
@@ -150,16 +243,16 @@ int sys_Connect(Fid_t sock, port_t port, timeout_t timeout)
 
 				if(!timeout_not_expired) //an den egine expired rip
 				{
-					fprintf(stderr, "%s\n", "returning -1 from Connect() 1" );
+					fprintf(stderr, "%s\n", "fail mesa sthn if" );
 					return -1;
 				}
-			//	}
-			//	else
-			//		kernel_wait(& req_node->cv, SCHED_PIPE);
+				// else{
+				// 	kernel_wait(& req_node->cv, SCHED_PIPE); //giati????
+				// }
 
 			}
-			// free(req_node);
-			// req_node = NULL;
+			free(req_node);
+			req_node = NULL;
 			return 0;
 		}
 

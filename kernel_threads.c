@@ -46,7 +46,7 @@ PTCB* create_PTCB(Task task, int argl, void* args, PCB* pcb)
     ptcb->is_exited = 0;
     ptcb->argl = argl;
     ptcb->args = args;
-
+    ptcb->ref_counter = 1;
     // fprintf(stderr, "CREATE_PTCB with addr: ----> %d\n", ptcb );
     return  ptcb;
 }
@@ -71,6 +71,7 @@ Tid_t sys_CreateThread(Task task, int argl, void* args)
       tcb = spawn_thread(CURPROC, start_PTCB_thread);
       ptcb->master_thread=tcb; 
       ptcb->master_thread->owner_ptcb = ptcb;
+      ptcb->ref_counter = 0;
       // fprintf(stderr, "IF THS CREATE THREAD TELOS\n" );
 
     }
@@ -115,40 +116,53 @@ int sys_ThreadJoin(Tid_t tid, int* exitval)
 // Mutex_Lock(&CURPROC->ptcb_mx);
 
     // Spontaneous-wake-up protection loop
+  if((ptcb->is_detached == 0) && (ptcb->owner_pcb == CURPROC) )
+    {
+
+      ptcb->ref_counter++;
+
+    if(rlist_find(&CURPROC->PTCB_list,ptcb,NULL)==NULL){ // - there is no thread with the given tid in this process.
+      // Mutex_Unlock(&CURPROC->ptcb_mx);
+      return -1;  
+    }
 
 
-  if(rlist_find(&CURPROC->PTCB_list,ptcb,NULL)==NULL){ // - there is no thread with the given tid in this process.
-    // Mutex_Unlock(&CURPROC->ptcb_mx);
-    return -1;  
+    // fprintf(stderr, "%s\n", "THREAD JOIN IF 1 passed\n" );
+    if(ptcb==CURTHREAD->owner_ptcb){     //- the tid corresponds to the current thread
+      // Mutex_Unlock(&CURPROC->ptcb_mx);
+      return -1;
+    }
+
+    // fprintf(stderr, "%s\n", "THREAD JOIN IF 2 passed\n" );
+    //Is detached?
+    if(ptcb->is_detached==1){            //- the tid corresponds to a detached thread.
+      // Mutex_Unlock(&CURPROC->ptcb_mx);
+      return -1;
+    }
+
+    ptcb->ref_counter--;
+
+    while( (ptcb->is_exited!=1) ){
+      // fprintf(stderr, "%s\n", "in JOIN() before kernel_wait()");
+      kernel_wait(& ptcb->cv, SCHED_USER); // ???
+      // fprintf(stderr, "%s\n", "in JOIN() after kernel_wait()");
+    }
+   // Cond_Wait(&CURPROC->ptcb_mx,&ptcb->cv);//This line takes forever to execute
+
+    if(exitval!=NULL){//Save exit value
+      *exitval=ptcb->exitval; //
+      // Mutex_Unlock(&CURPROC->ptcb_mx);
+      return 0;
+    }
+
+    if( (ptcb->ref_counter<=0) && (ptcb->is_exited==1) ) 
+    {
+      // fprintf(stderr, "%s%d\n", "in JOIN() before delete_PTCB(), ref_counter:", ptcb->ref_counter);
+      release_PTCB(ptcb);
+
+      return 0; // Success
+    }
   }
-
-
-  // fprintf(stderr, "%s\n", "THREAD JOIN IF 1 passed\n" );
-  if(ptcb==CURTHREAD->owner_ptcb){     //- the tid corresponds to the current thread
-    // Mutex_Unlock(&CURPROC->ptcb_mx);
-    return -1;
-  }
-
-  // fprintf(stderr, "%s\n", "THREAD JOIN IF 2 passed\n" );
-  //Is detached?
-  if(ptcb->is_detached==1){            //- the tid corresponds to a detached thread.
-    // Mutex_Unlock(&CURPROC->ptcb_mx);
-    return -1;
-  }
-
-  while( (ptcb->is_exited!=1) ){
-    // fprintf(stderr, "%s\n", "in JOIN() before kernel_wait()");
-    kernel_wait(& ptcb->cv, SCHED_USER); // ???
-    // fprintf(stderr, "%s\n", "in JOIN() after kernel_wait()");
-  }
- // Cond_Wait(&CURPROC->ptcb_mx,&ptcb->cv);//This line takes forever to execute
-
-  if(exitval!=NULL){//Save exit value
-    *exitval=ptcb->exitval; //
-    // Mutex_Unlock(&CURPROC->ptcb_mx);
-    return 0;
-  }
-
 
   // Isws 8elei if is exited kai na kanoyme mesa release to thread ama mpei
   // Mutex_Unlock(&CURPROC->ptcb_mx);
@@ -177,7 +191,8 @@ int sys_ThreadDetach(Tid_t tid)
 
   // fprintf(stderr, "%s\n", "THREAD DETACHED IF 2 passed\n" );
   ptcb->is_detached=1;
-
+  ptcb->ref_counter = 0;
+  kernel_broadcast(& ptcb->cv); //ayto...??????
 	return 0;
 }
 

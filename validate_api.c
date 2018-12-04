@@ -83,901 +83,901 @@ BARE_TEST(test_boot,
 
 
 
-// /*
-// 	Test that the child process created, gets the same pid as the
-// 	parent got returned from exec.
-//  */
+/*
+	Test that the child process created, gets the same pid as the
+	parent got returned from exec.
+ */
 
 
-// BOOT_TEST(test_pid_of_init_is_one, 
-// 	"Test that the pid of the init task is 1. This may\n"
-// 	"not be according to spec, but this is something\n"
-// 	"we will correct in the next update."
-// 	)
-// {
-// 	ASSERT(GetPid()==1);
-// 	return 0;
-// }
-
-
-
-// BOOT_TEST(test_waitchild_error_on_invalid_pid,
-// 	"Test that WaitChild returns an error when the pid is invalid."
-// 	)
-// {
-// 	void waitchild_error()
-// 	{
-// 		/* Cannot wait on myself */
-// 		ASSERT(WaitChild(GetPid(),NULL)==NOPROC);
-// 		ASSERT(WaitChild(MAX_PROC, NULL)==NOPROC);
-// 		ASSERT(WaitChild(GetPid()+1, NULL)==NOPROC);
-// 	}
-// 	int subprocess(int argl, void* args) 
-// 	{
-// 		ASSERT(GetPid()!=1);
-// 		waitchild_error();
-// 		return 0;
-// 	}
-// 	waitchild_error();
-// 	Pid_t cpid = Exec(subprocess, 0, NULL);
-// 	ASSERT(WaitChild(NOPROC, NULL)==cpid);
-// 	return 0;
-// }
-
-
-// BOOT_TEST(test_waitchild_error_on_nonchild,
-// 	"Test that WaitChild returns an error when the process is not\n"
-// 	"its child."
-// 	)
-// {
-// 	int void_child(int argl, void* args) { return 0; }
-// 	Pid_t cpid = Exec(void_child, 0, NULL);
-// 	int bad_child(int argl, void* args)
-// 	{
-// 		ASSERT(WaitChild(cpid, NULL)==NOPROC);
-// 		return 0;
-// 	}
-// 	Pid_t badpid = Exec(bad_child, 0, NULL);
-// 	ASSERT(badpid != NOPROC);
-// 	ASSERT(WaitChild(badpid, NULL)==badpid);
-// 	ASSERT(WaitChild(cpid, NULL)==cpid);
-// 	return 0;
-// }
-
-
-// /* used to pass information to parent */
-// struct test_pid_rec {
-// 	Pid_t pid;
-// 	int level;
-// };
-
-
-// BOOT_TEST(test_exec_getpid_wait, 
-// 	"Test that Exec returns the same pid as the child sees\n"
-// 	"by calling GetPid(). Also, that WaitChild with a given pid\n"
-// 	"returns the correct status.",
-// 	.timeout=20
-// 	)
-// {
-// 	struct test_pid_rec  myrec;  /* only used by init task */
-// 	struct test_pid_rec* prec;
-
-// 	if(argl==0) {
-// 		ASSERT(GetPid()==1);
-// 		prec = &myrec;
-// 		prec->level = 7;      /* 4^7 = 2^14 = 16384 children will be run */
-// 	} else {
-// 		ASSERT(argl==sizeof(struct test_pid_rec*));
-// 		prec = *(struct test_pid_rec**)args;
-// 	}
-// 	prec->pid = GetPid();
-
-// 	if(prec->level>0) {
-// 		for(int i=0;i<3;i++) {
-// 			/* Prepare rec for child */
-// 			struct test_pid_rec rec;
-// 			rec.level = prec->level - 1;
-// 			/* Exec child */
-// 			struct test_pid_rec* arg = &rec;
-// 			Pid_t cpid = Exec(test_exec_getpid_wait.boot, sizeof(arg), &arg);
-// 			ASSERT(cpid != NOPROC);
-// 			/* Wait for child and verify */
-// 			if(cpid != NOPROC) {
-// 				int status;
-// 				Pid_t wpid = WaitChild(cpid, &status);
-// 				ASSERT(wpid==cpid);
-// 				ASSERT(status==cpid);
-// 			}
-// 		}
-// 	}
-// 	return GetPid();
-// }
+BOOT_TEST(test_pid_of_init_is_one, 
+	"Test that the pid of the init task is 1. This may\n"
+	"not be according to spec, but this is something\n"
+	"we will correct in the next update."
+	)
+{
+	ASSERT(GetPid()==1);
+	return 0;
+}
 
 
 
-// BOOT_TEST(test_exec_copies_arguments,
-// 	"Test that Exec creates of copy of the arguments of the new process."
-// 	)
-// {
-// 	int child(int argl, void* args)
-// 	{
-// 		*(int*)args = 1;
-// 		return 0;
-// 	}
-
-// 	Pid_t cpid;
-// 	int value = 0;
-// 	ASSERT((cpid = Exec(child, sizeof(value), &value))!=NOPROC);
-// 	WaitChild(cpid, NULL);
-// 	ASSERT(value==0);
-// 	return 0;
-// }
-
-
-// BOOT_TEST(test_wait_for_any_child, 
-// 	"Test WaitChild when called to wait on any child."
-// 	)
-// {
-// #define NCHILDREN 5
-// #define NLEVELS 3
-// 	struct test_pid_rec myrec;
-// 	struct test_pid_rec* prec;
-// 	if(argl==0) {
-// 		ASSERT(GetPid()==1);
-// 		prec = &myrec;
-// 		prec->level = NLEVELS;
-// 	} else {
-// 		prec = *(struct test_pid_rec**)args;
-// 		prec->pid = GetPid();
-// 	}
-
-// 	if(prec->level>0) {
-// 		struct test_pid_rec rec[NCHILDREN];
-
-// 		/* Test many execs */
-// 		for(int i=0; i<NCHILDREN; i++) {
-// 			struct test_pid_rec* arg = &rec[i];
-// 			rec[i].level = prec->level - 1;
-// 			Pid_t cpid = Exec(test_wait_for_any_child.boot, sizeof(arg), &arg);
-// 			ASSERT(cpid!=NOPROC);
-// 		}
-
-// 		for(int i=0; i<NCHILDREN; i++) {
-// 			Pid_t cpid = WaitChild(NOPROC, NULL);
-// 			ASSERT(cpid != NOPROC);
-
-// 			/* try to find cpid in array */
-// 			int j;
-// 			for(j=0; j<NCHILDREN;j++) 
-// 				if(rec[j].pid == cpid) break;
-// 			ASSERT(j < NCHILDREN);
-// 			rec[j].pid = NOPROC;  /* Reset it so we don't find it again! */
-// 		}
-
-// 		ASSERT(WaitChild(NOPROC, NULL)==NOPROC);
-// 	}
-// 	return 0;
-// #undef NCHILDREN
-// #undef NLEVELS
-// }
+BOOT_TEST(test_waitchild_error_on_invalid_pid,
+	"Test that WaitChild returns an error when the pid is invalid."
+	)
+{
+	void waitchild_error()
+	{
+		/* Cannot wait on myself */
+		ASSERT(WaitChild(GetPid(),NULL)==NOPROC);
+		ASSERT(WaitChild(MAX_PROC, NULL)==NOPROC);
+		ASSERT(WaitChild(GetPid()+1, NULL)==NOPROC);
+	}
+	int subprocess(int argl, void* args) 
+	{
+		ASSERT(GetPid()!=1);
+		waitchild_error();
+		return 0;
+	}
+	waitchild_error();
+	Pid_t cpid = Exec(subprocess, 0, NULL);
+	ASSERT(WaitChild(NOPROC, NULL)==cpid);
+	return 0;
+}
 
 
-// BOOT_TEST(test_exit_returns_status,
-// 	"Test that the exit status is returned by Exit"
-// 	)
-// {
-//  	int child(int arg, void* args) {
-// 		Exit(GetPid());
-// 		ASSERT(0);
-// 		return 1;
-// 	}
-// 	Pid_t children[100];
-// 	for(int i=0;i<100;i++)
-// 		children[i] = Exec(child, 0, NULL);
-
-// 	for(int i=0;i<100;i++) {
-// 		int status;
-// 		WaitChild(children[i], &status);
-// 		ASSERT(status==children[i]);
-// 	}
-// 	return 0;
-// }
-
-// BOOT_TEST(test_main_return_returns_status,
-// 	"Test that the exit status is returned by return from main task"
-// 	)
-// {
-//  	int child(int arg, void* args) {
-// 		return GetPid();
-// 	}
-// 	const int N=10;
-// 	Pid_t children[N];
-// 	for(int i=0;i<N;i++)
-// 		children[i] = Exec(child, 0, NULL);
-// 	for(int i=0;i<N;i++) {
-// 		int status;
-// 		WaitChild(children[i], &status);
-// 		ASSERT(status==children[i]);
-// 	}
-// 	return 0;
-// }
+BOOT_TEST(test_waitchild_error_on_nonchild,
+	"Test that WaitChild returns an error when the process is not\n"
+	"its child."
+	)
+{
+	int void_child(int argl, void* args) { return 0; }
+	Pid_t cpid = Exec(void_child, 0, NULL);
+	int bad_child(int argl, void* args)
+	{
+		ASSERT(WaitChild(cpid, NULL)==NOPROC);
+		return 0;
+	}
+	Pid_t badpid = Exec(bad_child, 0, NULL);
+	ASSERT(badpid != NOPROC);
+	ASSERT(WaitChild(badpid, NULL)==badpid);
+	ASSERT(WaitChild(cpid, NULL)==cpid);
+	return 0;
+}
 
 
-// BOOT_TEST(test_orphans_adopted_by_init,
-// 	"Test that when a process exits leaving orphans, init becomes the new parent."
-// 	)
-// {
-// 	int grandchild(int argl, void* args)
-// 	{
-// 		return 1;
-// 	}
-// 	int child(int arg, void* args)
-// 	{
-// 		for(int i=0;i<5;i++)
-// 			ASSERT(Exec(grandchild, 0, NULL)!=NOPROC);
-// 		return 100;
-// 	}
-
-// 	for(int i=0;i<3; i++)
-// 		ASSERT(Exec(child,0,NULL)!=NOPROC);
+/* used to pass information to parent */
+struct test_pid_rec {
+	Pid_t pid;
+	int level;
+};
 
 
-// 	/* Now wait for 18 children (3 child + 15 grandchild) */
-// 	int sum = 0;
-// 	for(int i=0;i<18;i++) {
-// 		int status;		
-// 		ASSERT(WaitChild(NOPROC, &status) != NOPROC);
-// 		sum += status;
-// 	}
+BOOT_TEST(test_exec_getpid_wait, 
+	"Test that Exec returns the same pid as the child sees\n"
+	"by calling GetPid(). Also, that WaitChild with a given pid\n"
+	"returns the correct status.",
+	.timeout=20
+	)
+{
+	struct test_pid_rec  myrec;  /* only used by init task */
+	struct test_pid_rec* prec;
+
+	if(argl==0) {
+		ASSERT(GetPid()==1);
+		prec = &myrec;
+		prec->level = 7;      /* 4^7 = 2^14 = 16384 children will be run */
+	} else {
+		ASSERT(argl==sizeof(struct test_pid_rec*));
+		prec = *(struct test_pid_rec**)args;
+	}
+	prec->pid = GetPid();
+
+	if(prec->level>0) {
+		for(int i=0;i<3;i++) {
+			/* Prepare rec for child */
+			struct test_pid_rec rec;
+			rec.level = prec->level - 1;
+			/* Exec child */
+			struct test_pid_rec* arg = &rec;
+			Pid_t cpid = Exec(test_exec_getpid_wait.boot, sizeof(arg), &arg);
+			ASSERT(cpid != NOPROC);
+			/* Wait for child and verify */
+			if(cpid != NOPROC) {
+				int status;
+				Pid_t wpid = WaitChild(cpid, &status);
+				ASSERT(wpid==cpid);
+				ASSERT(status==cpid);
+			}
+		}
+	}
+	return GetPid();
+}
+
+
+
+BOOT_TEST(test_exec_copies_arguments,
+	"Test that Exec creates of copy of the arguments of the new process."
+	)
+{
+	int child(int argl, void* args)
+	{
+		*(int*)args = 1;
+		return 0;
+	}
+
+	Pid_t cpid;
+	int value = 0;
+	ASSERT((cpid = Exec(child, sizeof(value), &value))!=NOPROC);
+	WaitChild(cpid, NULL);
+	ASSERT(value==0);
+	return 0;
+}
+
+
+BOOT_TEST(test_wait_for_any_child, 
+	"Test WaitChild when called to wait on any child."
+	)
+{
+#define NCHILDREN 5
+#define NLEVELS 3
+	struct test_pid_rec myrec;
+	struct test_pid_rec* prec;
+	if(argl==0) {
+		ASSERT(GetPid()==1);
+		prec = &myrec;
+		prec->level = NLEVELS;
+	} else {
+		prec = *(struct test_pid_rec**)args;
+		prec->pid = GetPid();
+	}
+
+	if(prec->level>0) {
+		struct test_pid_rec rec[NCHILDREN];
+
+		/* Test many execs */
+		for(int i=0; i<NCHILDREN; i++) {
+			struct test_pid_rec* arg = &rec[i];
+			rec[i].level = prec->level - 1;
+			Pid_t cpid = Exec(test_wait_for_any_child.boot, sizeof(arg), &arg);
+			ASSERT(cpid!=NOPROC);
+		}
+
+		for(int i=0; i<NCHILDREN; i++) {
+			Pid_t cpid = WaitChild(NOPROC, NULL);
+			ASSERT(cpid != NOPROC);
+
+			/* try to find cpid in array */
+			int j;
+			for(j=0; j<NCHILDREN;j++) 
+				if(rec[j].pid == cpid) break;
+			ASSERT(j < NCHILDREN);
+			rec[j].pid = NOPROC;  /* Reset it so we don't find it again! */
+		}
+
+		ASSERT(WaitChild(NOPROC, NULL)==NOPROC);
+	}
+	return 0;
+#undef NCHILDREN
+#undef NLEVELS
+}
+
+
+BOOT_TEST(test_exit_returns_status,
+	"Test that the exit status is returned by Exit"
+	)
+{
+ 	int child(int arg, void* args) {
+		Exit(GetPid());
+		ASSERT(0);
+		return 1;
+	}
+	Pid_t children[100];
+	for(int i=0;i<100;i++)
+		children[i] = Exec(child, 0, NULL);
+
+	for(int i=0;i<100;i++) {
+		int status;
+		WaitChild(children[i], &status);
+		ASSERT(status==children[i]);
+	}
+	return 0;
+}
+
+BOOT_TEST(test_main_return_returns_status,
+	"Test that the exit status is returned by return from main task"
+	)
+{
+ 	int child(int arg, void* args) {
+		return GetPid();
+	}
+	const int N=10;
+	Pid_t children[N];
+	for(int i=0;i<N;i++)
+		children[i] = Exec(child, 0, NULL);
+	for(int i=0;i<N;i++) {
+		int status;
+		WaitChild(children[i], &status);
+		ASSERT(status==children[i]);
+	}
+	return 0;
+}
+
+
+BOOT_TEST(test_orphans_adopted_by_init,
+	"Test that when a process exits leaving orphans, init becomes the new parent."
+	)
+{
+	int grandchild(int argl, void* args)
+	{
+		return 1;
+	}
+	int child(int arg, void* args)
+	{
+		for(int i=0;i<5;i++)
+			ASSERT(Exec(grandchild, 0, NULL)!=NOPROC);
+		return 100;
+	}
+
+	for(int i=0;i<3; i++)
+		ASSERT(Exec(child,0,NULL)!=NOPROC);
+
+
+	/* Now wait for 18 children (3 child + 15 grandchild) */
+	int sum = 0;
+	for(int i=0;i<18;i++) {
+		int status;		
+		ASSERT(WaitChild(NOPROC, &status) != NOPROC);
+		sum += status;
+	}
 	
 
-// 	/* Check that we have no more */
-// 	ASSERT(WaitChild(NOPROC, NULL) == NOPROC);
+	/* Check that we have no more */
+	ASSERT(WaitChild(NOPROC, NULL) == NOPROC);
 
-// 	ASSERT(sum == 315);
+	ASSERT(sum == 315);
 
-// 	return 0;
-// }
-
-
-
-// /*********************************************
-//  *
-//  *
-//  *
-//  *  Synchronization tests
-//  *
-//  *
-//  *
-//  *********************************************/
+	return 0;
+}
 
 
-// /*
-// 	Test that a timed wait on a condition variable terminates after the timeout.
-//  */
 
-// BOOT_TEST(test_cond_timedwait_timeout, 
-// 	"Test that timed waits on a condition variable terminate without blocking after the timeout."
+/*********************************************
+ *
+ *
+ *
+ *  Synchronization tests
+ *
+ *
+ *
+ *********************************************/
+
+
+/*
+	Test that a timed wait on a condition variable terminates after the timeout.
+ */
+
+BOOT_TEST(test_cond_timedwait_timeout, 
+	"Test that timed waits on a condition variable terminate without blocking after the timeout."
+	)
+{
+
+	unsigned long tspec2msec(struct timespec t)
+	{
+		return 1000ul*t.tv_sec + t.tv_nsec/1000000ul;
+	}
+
+	int do_timeout(int argl, void* args) {
+		timeout_t t = *((timeout_t *) args);
+
+		Mutex mx = MUTEX_INIT;
+		CondVar cv = COND_INIT;
+
+		struct timespec t1, t2;
+		clock_gettime(CLOCK_REALTIME, &t1);
+
+		Mutex_Lock(&mx);
+		Cond_TimedWait(&mx, &cv, t);
+
+		clock_gettime(CLOCK_REALTIME, &t2);
+
+		unsigned long Dt = tspec2msec(t2)-tspec2msec(t1);
+
+		/* Allow a large, 20% error */
+		ASSERT(abs(Dt-t)*5 <= Dt);
+
+		return 0;
+	}
+
+	for(timeout_t t=500; t < 1000; t+=100) {
+		Exec(do_timeout, sizeof(t), &t);
+	}
+	for(timeout_t t=550; t < 1000; t+=100) {
+		Exec(do_timeout, sizeof(t), &t);
+	}
+
+	/* 
+		Wait all child processes, before leaving the current stack frame!
+		Else, the local functions may cause a crash!
+	*/
+	while(WaitChild(NOPROC,NULL)!=NOPROC);
+	return 0;
+}
+
+
+/*
+	Test that a timed wait on a condition variable terminates at a signal.
+ */
+
+BOOT_TEST(test_cond_timedwait_signal,
+	"Test that timed waits on a condition variable terminates immediately on signal."
+	)
+{
+	Mutex m = MUTEX_INIT;
+	CondVar cv = COND_INIT;
+	int flag=0;
+
+	int long_blocking(int argl, void* args)
+	{
+		Mutex_Lock(&m);
+		flag = 1;
+		Cond_Signal(&cv);
+		Cond_TimedWait(&m, &cv, 10000000); // 3 hour wait
+		Mutex_Unlock(&m);
+		return 0;
+	}
+
+	Pid_t child = Exec(long_blocking, 0, NULL);
+	Mutex_Lock(&m);
+	while(! flag)
+		Cond_Wait(&m, &cv);
+	Cond_Signal(&cv);
+	Mutex_Unlock(&m);
+
+	WaitChild(child, NULL);
+	return 0;
+}
+
+
+
+BOOT_TEST(test_cond_timedwait_broadcast,
+	"Test that timed waits on a condition variable terminate immediately on broadcast."
+	)
+{
+	Mutex m = MUTEX_INIT;
+	CondVar cv = COND_INIT;
+	CondVar pcv = COND_INIT;
+	int flag=0;
+
+	int long_blocking(int argl, void* args)
+	{
+		Mutex_Lock(&m);
+		flag ++;
+		Cond_Signal(&pcv);
+		Cond_TimedWait(&m, &cv, 10000000); // 3 hour wait
+		Mutex_Unlock(&m);
+		return 0;
+	}
+
+	const int N=100;  // spawn 100 children
+
+	// create N children
+	for(int i=0; i<N; i++) Exec(long_blocking, 0, NULL);
+
+	Mutex_Lock(&m);
+	// wait for all children to sleep
+	while(flag!=N) Cond_Wait(&m, &pcv);
+	// wake all children up!
+	Cond_Broadcast(&cv);
+	Mutex_Unlock(&m);
+
+	// wait all children
+	while(WaitChild(NOPROC, NULL)!=NOPROC);
+	return 0;
+}
+
+
+
+/*********************************************
+ *
+ *
+ *
+ *  I/O  tests
+ *
+ *
+ *
+ *********************************************/
+
+
+
+
+BOOT_TEST(test_get_terminals,
+	"Test that the number returned by GetTerminalDevices() is equal to the\n"
+	"number of serial ports in the VM."
+	)
+{
+	ASSERT(bios_serial_ports()==GetTerminalDevices());
+	return 0;
+}
+
+BOOT_TEST(test_dup2_error_on_nonfile,
+	"Test that Dup2 will return an error if oldfd is not a file.")
+{
+	for(Fid_t fid = 0; fid < MAX_FILEID; fid++)
+		ASSERT(Dup2(fid, MAX_FILEID-1-fid)==-1);
+	return 0;
+}
+
+BOOT_TEST(test_dup2_error_on_invalid_fid,
+	"Test that Dup2 returns error when some fid is invalid."
+	)
+{
+	ASSERT(Dup2(NOFILE, 3)==-1);
+	ASSERT(Dup2(MAX_FILEID, 3)==-1);
+	Fid_t fid = OpenNull(0);
+	assert(fid!=NOFILE);
+	ASSERT(Dup2(fid, NOFILE)==-1);
+	ASSERT(Dup2(fid, MAX_FILEID)==-1);		
+	return 0;
+}
+
+
+BOOT_TEST(test_open_terminals,
+	"Test that every legal terminal can be opened."
+	)
+{
+	Fid_t term[MAX_TERMINALS];
+	for(uint i=0; i<GetTerminalDevices(); i++) {
+		term[i] = OpenTerminal(i);
+		ASSERT(term[i]!=NOFILE);
+	}
+	return 0;
+}
+
+
+BOOT_TEST(test_close_error_on_invalid_fid,
+	"Test that Close returns error on invalid fid."
+	)
+{
+	ASSERT(Close(NOFILE)==-1);
+	ASSERT(Close(MAX_FILEID)==-1);
+	return 0;
+}
+
+BOOT_TEST(test_close_success_on_valid_nonfile_fid,
+	"Test that Close returns success on valid fid, even if there is no\n"
+	"open file for this id."
+	)
+{
+	for(Fid_t i=0; i<MAX_FILEID; i++)
+		ASSERT(Close(i)==0);
+	return 0;
+}
+
+BOOT_TEST(test_close_terminals,
+	"Test that terminals can be opened and then closed without error."
+	)
+{
+	Fid_t term[MAX_TERMINALS];
+	for(uint i=0; i<GetTerminalDevices(); i++) {
+		term[i] = OpenTerminal(i);
+		ASSERT(term[i]!=NOFILE);
+	}
+	for(uint i=0; i<GetTerminalDevices(); i++) {
+		ASSERT(Close(term[i])==0);
+	}	
+	return 0;	
+}
+
+
+
+void checked_read(Fid_t fid, const char* message)
+{
+	int mlen = strlen(message);
+	char buffer[mlen];
+	ASSERT(Read(fid, buffer, mlen)==mlen);
+	ASSERT(memcmp(buffer, message, mlen)==0);
+}
+
+
+
+BOOT_TEST(test_read_kbd,
+	"Test that we can read a few bytes from the keyboard on terminal 0.",
+	.minimum_terminals = 1
+	)
+{
+	assert(GetTerminalDevices()>0);
+	Fid_t fterm = OpenTerminal(0);
+	ASSERT(fterm!=NOFILE);
+
+	sendme(0, "Hello");
+	checked_read(fterm, "Hello");
+	return 0;
+}
+
+
+BOOT_TEST(test_read_kbd_big,
+	"Test that we can read massively from the keyboard on terminal 0.",
+	.minimum_terminals = 1, .timeout = 20
+	)
+{
+	assert(GetTerminalDevices()>0);
+	Fid_t fterm = OpenTerminal(0);
+	ASSERT(fterm!=NOFILE);
+
+	char bytes[1025];
+	FUDGE(bytes);
+	bytes[1024]='\0';
+
+	/* send me 1Mbyte */
+	for(int i=0; i<1024; i++)
+		sendme(0, bytes);
+
+	/* Read 16kb bytes at a time */
+	char buffer[16384];
+	uint count = 0;
+	uint total = 1<<20;	
+	while(count < total)
+	{
+		int remain = total-count;
+
+		int rc = Read(fterm, buffer, (remain<16384)? remain: 16384);
+		ASSERT(rc>0);
+		count += rc;
+	}
+
+	return 0;
+}
+
+
+BOOT_TEST(test_dup2_copies_file,
+	"This test copies that Dup2 copies the file to another file descriptor.",
+	.minimum_terminals = 1
+	)
+{
+	Fid_t fterm = OpenTerminal(0);
+	ASSERT(fterm!=NOFILE);
+
+	if(fterm!=0) {
+		ASSERT(Dup2(fterm, 0)==0);
+		Close(fterm);		
+	}
+
+	sendme(0, "zavarakatranemia");
+
+	ASSERT(Dup2(0,1)==0);
+	ASSERT(Dup2(0,2)==0);
+	ASSERT(Dup2(0,3)==0);
+	ASSERT(Dup2(0,4)==0);
+
+	checked_read(1, "zava");
+	checked_read(3, "raka");
+	checked_read(2, "trane");
+	checked_read(4, "mia");
+
+	return 0;
+}
+
+
+BOOT_TEST(test_read_error_on_bad_fid,
+	"Test that Read will return an error when called on a bad fid"
+	)
+{
+	char buffer[10];
+	ASSERT(Read(0, buffer, 10)==-1);
+	return 0;
+}
+
+
+BOOT_TEST(test_read_from_many_terminals,
+	"Test that Read can read from all terminals",
+	.minimum_terminals = 2
+	)
+{
+	Fid_t term[MAX_TERMINALS];
+	for(uint i = 0; i < GetTerminalDevices(); i++) {
+		term[i] = OpenTerminal(i);
+		ASSERT(term[i]!=NOFILE);
+	}
+
+	for(uint i = 0; i < GetTerminalDevices(); i++) {
+		char message[32];
+		sprintf(message, "This is terminal %d", i);
+
+		sendme(i, message);
+	}
+	for(uint i = 0; i < GetTerminalDevices(); i++) {
+		char message[32];
+		sprintf(message, "This is terminal %d", i);
+
+		checked_read(term[i], message);
+	}
+
+
+	return 0;
+}
+
+
+
+BOOT_TEST(test_child_inherits_files,
+	"Test that a child process inherits files.",
+	.minimum_terminals = 1
+	)
+{
+	Fid_t fterm = OpenTerminal(0);
+	ASSERT(fterm!=NOFILE);
+	if(fterm!=0)
+		ASSERT(Dup2(fterm, 0)==0);
+
+	int greeted_child(int argl, void* args)
+	{
+		checked_read(0, "Hello child");
+		checked_read(0, "Hello again");
+		return 0;
+	}
+
+	sendme(0, "Hello child");
+	Pid_t cpid = Exec(greeted_child, 0, NULL);
+	ASSERT(Close(0)==0);
+	ASSERT(Close(fterm)==0);
+	sendme(0, "Hello again");
+	ASSERT(cpid!=NOPROC);
+	ASSERT(WaitChild(NOPROC, NULL)==cpid);
+	return 0;
+}
+
+
+
+
+BOOT_TEST(test_null_device,
+	"Test the null device."
+	)
+{
+
+	void test_read(Fid_t fid)
+	{
+		char z[] = "zavarakatranemia";
+		char z1[] = "\0\0\0\0\0\0\0\0\0\0anemia";
+		ASSERT(Read(fid, z, 10)==10);
+		ASSERT(memcmp(z,z1, 17)==0);
+	}
+
+	Fid_t fn = OpenNull();
+	ASSERT(fn!=-1);
+
+	test_read(fn);
+	ASSERT(Write(fn, NULL, 123456)==123456);
+
+	ASSERT(Close(fn)==0);
+	return 0;
+}
+
+
+
+/***********************************************************************************8
+*************************************************/
+
+
+
+
+void checked_write(Fid_t fid, const char* message)
+{
+	int mlen = strlen(message);
+	for(int count=0; count < mlen;) {
+		int wno = Write(fid, message+count, 1);
+		ASSERT(wno>0);
+		count += wno;
+	}
+}
+
+
+
+BOOT_TEST(test_write_con,
+	"Test that we can write a few bytes to the console on terminal 0.",
+	.minimum_terminals = 1
+	)
+{
+	assert(GetTerminalDevices()>0);
+	Fid_t fterm = OpenTerminal(0);
+	ASSERT(fterm!=NOFILE);
+
+	expect(0, "Hello");
+	checked_write(fterm, "Hello");
+	return 0;
+}
+
+
+BOOT_TEST(test_write_con_big,
+	"Test that we can write massively to the console on terminal 0.",
+	.minimum_terminals = 1
+	)
+{
+	assert(GetTerminalDevices()>0);
+	Fid_t fterm = OpenTerminal(0);
+	ASSERT(fterm!=NOFILE);
+
+	char bytes[1025];
+	FUDGE(bytes);
+	bytes[1024]='\0';
+
+	/* send me 1Mbyte */
+	for(int i=0; i<1024; i++)
+		expect(0, bytes);
+
+	/* Create a 16kb block */
+	char buffer[16384];
+	FUDGE(buffer);
+
+	int total = 1<<20;
+	int count = 0;
+
+	while(count < total)
+	{
+		int remain = total-count;
+
+		int rc = Write(fterm, buffer, (remain<16384)? remain: 16384);
+		ASSERT(rc>0);
+		count += rc;
+	}
+
+	return 0;
+}
+
+
+
+BOOT_TEST(test_write_error_on_bad_fid,
+	"Test that Write will return an error when called on a bad fid"
+	)
+{
+	char buffer[10];
+	ASSERT(Write(0, buffer, 10)==-1);
+	return 0;
+}
+
+
+BOOT_TEST(test_write_to_many_terminals,
+	"Test that Write can send to all terminals",
+	.minimum_terminals = 2
+	)
+{
+	Fid_t term[MAX_TERMINALS];
+	for(uint i = 0; i < GetTerminalDevices(); i++) {
+		term[i] = OpenTerminal(i);
+		ASSERT(term[i]!=NOFILE);
+	}
+
+	for(uint i = 0; i < GetTerminalDevices(); i++) {
+		char message[32];
+		sprintf(message, "This is terminal %d", i);
+
+		expect(i, message);
+	}
+	for(uint i = 0; i < GetTerminalDevices(); i++) {
+		char message[32];
+		sprintf(message, "This is terminal %d", i);
+
+		checked_write(term[i], message);
+	}
+
+
+	return 0;
+}
+
+
+
+
+TEST_SUITE(basic_tests, 
+	"A suite of basic tests, focusing on the functional behaviour of the\n"
+	"tinyos3 API, but not the operational (concurrency and I/O multiplexing)."
+	)
+{
+	&test_boot,
+	&test_pid_of_init_is_one,
+	&test_waitchild_error_on_nonchild,
+	&test_waitchild_error_on_invalid_pid,
+	&test_exec_getpid_wait,
+	&test_exec_copies_arguments,
+	&test_exit_returns_status,
+	&test_main_return_returns_status,
+	&test_wait_for_any_child,
+	&test_orphans_adopted_by_init,
+	&test_cond_timedwait_timeout,
+	&test_cond_timedwait_signal,
+	&test_cond_timedwait_broadcast,
+	&test_null_device,
+	&test_get_terminals,
+	&test_open_terminals,
+	&test_dup2_error_on_nonfile,
+	&test_dup2_error_on_invalid_fid,
+	&test_dup2_copies_file,
+	&test_close_error_on_invalid_fid,
+	&test_close_success_on_valid_nonfile_fid,
+	&test_close_terminals,
+	&test_read_kbd,
+	&test_read_kbd_big,
+	&test_read_error_on_bad_fid,
+	&test_read_from_many_terminals,
+	&test_write_con,
+	&test_write_con_big,
+	&test_write_error_on_bad_fid,
+	&test_write_to_many_terminals,
+	&test_child_inherits_files,
+	NULL
+};
+
+
+
+/*********************************************
+ *
+ *
+ *
+ *  Thread tests
+ *
+ *
+ *
+ *********************************************/
+
+
+
+
+BOOT_TEST(test_create_join_thread,
+	"Test that a process thread can be created and joined. Also, that "
+	"the argument of the thread is passed correctly."
+	)
+{
+	int flag = 0;
+
+	int task(int argl, void* args) {
+		ASSERT(args == &flag);
+		*(int*)args = 1;
+		return 2;
+	}
+
+	Tid_t t = CreateThread(task, sizeof(flag), &flag);
+	ASSERT(t!=NOTHREAD);
+	int exitval;
+	ASSERT(ThreadJoin(t, &exitval)==0);
+	ASSERT(flag==1);
+	return 0;
+}
+
+
+// BOOT_TEST(test_exit_many_threads,
+// 	"Test that a process thread calling Exit will clean up correctly."
 // 	)
 // {
-
-// 	unsigned long tspec2msec(struct timespec t)
-// 	{
-// 		return 1000ul*t.tv_sec + t.tv_nsec/1000000ul;
-// 	}
-
-// 	int do_timeout(int argl, void* args) {
-// 		timeout_t t = *((timeout_t *) args);
-
-// 		Mutex mx = MUTEX_INIT;
-// 		CondVar cv = COND_INIT;
-
-// 		struct timespec t1, t2;
-// 		clock_gettime(CLOCK_REALTIME, &t1);
-
-// 		Mutex_Lock(&mx);
-// 		Cond_TimedWait(&mx, &cv, t);
-
-// 		clock_gettime(CLOCK_REALTIME, &t2);
-
-// 		unsigned long Dt = tspec2msec(t2)-tspec2msec(t1);
-
-// 		/* Allow a large, 20% error */
-// 		ASSERT(abs(Dt-t)*5 <= Dt);
-
-// 		return 0;
-// 	}
-
-// 	for(timeout_t t=500; t < 1000; t+=100) {
-// 		Exec(do_timeout, sizeof(t), &t);
-// 	}
-// 	for(timeout_t t=550; t < 1000; t+=100) {
-// 		Exec(do_timeout, sizeof(t), &t);
-// 	}
-
-// 	/* 
-// 		Wait all child processes, before leaving the current stack frame!
-// 		Else, the local functions may cause a crash!
-// 	*/
-// 	while(WaitChild(NOPROC,NULL)!=NOPROC);
-// 	return 0;
-// }
-
-
-// /*
-// 	Test that a timed wait on a condition variable terminates at a signal.
-//  */
-
-// BOOT_TEST(test_cond_timedwait_signal,
-// 	"Test that timed waits on a condition variable terminates immediately on signal."
-// 	)
-// {
-// 	Mutex m = MUTEX_INIT;
-// 	CondVar cv = COND_INIT;
-// 	int flag=0;
-
-// 	int long_blocking(int argl, void* args)
-// 	{
-// 		Mutex_Lock(&m);
-// 		flag = 1;
-// 		Cond_Signal(&cv);
-// 		Cond_TimedWait(&m, &cv, 10000000); // 3 hour wait
-// 		Mutex_Unlock(&m);
-// 		return 0;
-// 	}
-
-// 	Pid_t child = Exec(long_blocking, 0, NULL);
-// 	Mutex_Lock(&m);
-// 	while(! flag)
-// 		Cond_Wait(&m, &cv);
-// 	Cond_Signal(&cv);
-// 	Mutex_Unlock(&m);
-
-// 	WaitChild(child, NULL);
-// 	return 0;
-// }
-
-
-
-// BOOT_TEST(test_cond_timedwait_broadcast,
-// 	"Test that timed waits on a condition variable terminate immediately on broadcast."
-// 	)
-// {
-// 	Mutex m = MUTEX_INIT;
-// 	CondVar cv = COND_INIT;
-// 	CondVar pcv = COND_INIT;
-// 	int flag=0;
-
-// 	int long_blocking(int argl, void* args)
-// 	{
-// 		Mutex_Lock(&m);
-// 		flag ++;
-// 		Cond_Signal(&pcv);
-// 		Cond_TimedWait(&m, &cv, 10000000); // 3 hour wait
-// 		Mutex_Unlock(&m);
-// 		return 0;
-// 	}
-
-// 	const int N=100;  // spawn 100 children
-
-// 	// create N children
-// 	for(int i=0; i<N; i++) Exec(long_blocking, 0, NULL);
-
-// 	Mutex_Lock(&m);
-// 	// wait for all children to sleep
-// 	while(flag!=N) Cond_Wait(&m, &pcv);
-// 	// wake all children up!
-// 	Cond_Broadcast(&cv);
-// 	Mutex_Unlock(&m);
-
-// 	// wait all children
-// 	while(WaitChild(NOPROC, NULL)!=NOPROC);
-// 	return 0;
-// }
-
-
-
-// /*********************************************
-//  *
-//  *
-//  *
-//  *  I/O  tests
-//  *
-//  *
-//  *
-//  *********************************************/
-
-
-
-
-// BOOT_TEST(test_get_terminals,
-// 	"Test that the number returned by GetTerminalDevices() is equal to the\n"
-// 	"number of serial ports in the VM."
-// 	)
-// {
-// 	ASSERT(bios_serial_ports()==GetTerminalDevices());
-// 	return 0;
-// }
-
-// BOOT_TEST(test_dup2_error_on_nonfile,
-// 	"Test that Dup2 will return an error if oldfd is not a file.")
-// {
-// 	for(Fid_t fid = 0; fid < MAX_FILEID; fid++)
-// 		ASSERT(Dup2(fid, MAX_FILEID-1-fid)==-1);
-// 	return 0;
-// }
-
-// BOOT_TEST(test_dup2_error_on_invalid_fid,
-// 	"Test that Dup2 returns error when some fid is invalid."
-// 	)
-// {
-// 	ASSERT(Dup2(NOFILE, 3)==-1);
-// 	ASSERT(Dup2(MAX_FILEID, 3)==-1);
-// 	Fid_t fid = OpenNull(0);
-// 	assert(fid!=NOFILE);
-// 	ASSERT(Dup2(fid, NOFILE)==-1);
-// 	ASSERT(Dup2(fid, MAX_FILEID)==-1);		
-// 	return 0;
-// }
-
-
-// BOOT_TEST(test_open_terminals,
-// 	"Test that every legal terminal can be opened."
-// 	)
-// {
-// 	Fid_t term[MAX_TERMINALS];
-// 	for(uint i=0; i<GetTerminalDevices(); i++) {
-// 		term[i] = OpenTerminal(i);
-// 		ASSERT(term[i]!=NOFILE);
-// 	}
-// 	return 0;
-// }
-
-
-// BOOT_TEST(test_close_error_on_invalid_fid,
-// 	"Test that Close returns error on invalid fid."
-// 	)
-// {
-// 	ASSERT(Close(NOFILE)==-1);
-// 	ASSERT(Close(MAX_FILEID)==-1);
-// 	return 0;
-// }
-
-// BOOT_TEST(test_close_success_on_valid_nonfile_fid,
-// 	"Test that Close returns success on valid fid, even if there is no\n"
-// 	"open file for this id."
-// 	)
-// {
-// 	for(Fid_t i=0; i<MAX_FILEID; i++)
-// 		ASSERT(Close(i)==0);
-// 	return 0;
-// }
-
-// BOOT_TEST(test_close_terminals,
-// 	"Test that terminals can be opened and then closed without error."
-// 	)
-// {
-// 	Fid_t term[MAX_TERMINALS];
-// 	for(uint i=0; i<GetTerminalDevices(); i++) {
-// 		term[i] = OpenTerminal(i);
-// 		ASSERT(term[i]!=NOFILE);
-// 	}
-// 	for(uint i=0; i<GetTerminalDevices(); i++) {
-// 		ASSERT(Close(term[i])==0);
-// 	}	
-// 	return 0;	
-// }
-
-
-
-// void checked_read(Fid_t fid, const char* message)
-// {
-// 	int mlen = strlen(message);
-// 	char buffer[mlen];
-// 	ASSERT(Read(fid, buffer, mlen)==mlen);
-// 	ASSERT(memcmp(buffer, message, mlen)==0);
-// }
-
-
-
-// BOOT_TEST(test_read_kbd,
-// 	"Test that we can read a few bytes from the keyboard on terminal 0.",
-// 	.minimum_terminals = 1
-// 	)
-// {
-// 	assert(GetTerminalDevices()>0);
-// 	Fid_t fterm = OpenTerminal(0);
-// 	ASSERT(fterm!=NOFILE);
-
-// 	sendme(0, "Hello");
-// 	checked_read(fterm, "Hello");
-// 	return 0;
-// }
-
-
-// BOOT_TEST(test_read_kbd_big,
-// 	"Test that we can read massively from the keyboard on terminal 0.",
-// 	.minimum_terminals = 1, .timeout = 20
-// 	)
-// {
-// 	assert(GetTerminalDevices()>0);
-// 	Fid_t fterm = OpenTerminal(0);
-// 	ASSERT(fterm!=NOFILE);
-
-// 	char bytes[1025];
-// 	FUDGE(bytes);
-// 	bytes[1024]='\0';
-
-// 	/* send me 1Mbyte */
-// 	for(int i=0; i<1024; i++)
-// 		sendme(0, bytes);
-
-// 	/* Read 16kb bytes at a time */
-// 	char buffer[16384];
-// 	uint count = 0;
-// 	uint total = 1<<20;	
-// 	while(count < total)
-// 	{
-// 		int remain = total-count;
-
-// 		int rc = Read(fterm, buffer, (remain<16384)? remain: 16384);
-// 		ASSERT(rc>0);
-// 		count += rc;
-// 	}
-
-// 	return 0;
-// }
-
-
-// BOOT_TEST(test_dup2_copies_file,
-// 	"This test copies that Dup2 copies the file to another file descriptor.",
-// 	.minimum_terminals = 1
-// 	)
-// {
-// 	Fid_t fterm = OpenTerminal(0);
-// 	ASSERT(fterm!=NOFILE);
-
-// 	if(fterm!=0) {
-// 		ASSERT(Dup2(fterm, 0)==0);
-// 		Close(fterm);		
-// 	}
-
-// 	sendme(0, "zavarakatranemia");
-
-// 	ASSERT(Dup2(0,1)==0);
-// 	ASSERT(Dup2(0,2)==0);
-// 	ASSERT(Dup2(0,3)==0);
-// 	ASSERT(Dup2(0,4)==0);
-
-// 	checked_read(1, "zava");
-// 	checked_read(3, "raka");
-// 	checked_read(2, "trane");
-// 	checked_read(4, "mia");
-
-// 	return 0;
-// }
-
-
-// BOOT_TEST(test_read_error_on_bad_fid,
-// 	"Test that Read will return an error when called on a bad fid"
-// 	)
-// {
-// 	char buffer[10];
-// 	ASSERT(Read(0, buffer, 10)==-1);
-// 	return 0;
-// }
-
-
-// BOOT_TEST(test_read_from_many_terminals,
-// 	"Test that Read can read from all terminals",
-// 	.minimum_terminals = 2
-// 	)
-// {
-// 	Fid_t term[MAX_TERMINALS];
-// 	for(uint i = 0; i < GetTerminalDevices(); i++) {
-// 		term[i] = OpenTerminal(i);
-// 		ASSERT(term[i]!=NOFILE);
-// 	}
-
-// 	for(uint i = 0; i < GetTerminalDevices(); i++) {
-// 		char message[32];
-// 		sprintf(message, "This is terminal %d", i);
-
-// 		sendme(i, message);
-// 	}
-// 	for(uint i = 0; i < GetTerminalDevices(); i++) {
-// 		char message[32];
-// 		sprintf(message, "This is terminal %d", i);
-
-// 		checked_read(term[i], message);
-// 	}
-
-
-// 	return 0;
-// }
-
-
-
-// BOOT_TEST(test_child_inherits_files,
-// 	"Test that a child process inherits files.",
-// 	.minimum_terminals = 1
-// 	)
-// {
-// 	Fid_t fterm = OpenTerminal(0);
-// 	ASSERT(fterm!=NOFILE);
-// 	if(fterm!=0)
-// 		ASSERT(Dup2(fterm, 0)==0);
-
-// 	int greeted_child(int argl, void* args)
-// 	{
-// 		checked_read(0, "Hello child");
-// 		checked_read(0, "Hello again");
-// 		return 0;
-// 	}
-
-// 	sendme(0, "Hello child");
-// 	Pid_t cpid = Exec(greeted_child, 0, NULL);
-// 	ASSERT(Close(0)==0);
-// 	ASSERT(Close(fterm)==0);
-// 	sendme(0, "Hello again");
-// 	ASSERT(cpid!=NOPROC);
-// 	ASSERT(WaitChild(NOPROC, NULL)==cpid);
-// 	return 0;
-// }
-
-
-
-
-// BOOT_TEST(test_null_device,
-// 	"Test the null device."
-// 	)
-// {
-
-// 	void test_read(Fid_t fid)
-// 	{
-// 		char z[] = "zavarakatranemia";
-// 		char z1[] = "\0\0\0\0\0\0\0\0\0\0anemia";
-// 		ASSERT(Read(fid, z, 10)==10);
-// 		ASSERT(memcmp(z,z1, 17)==0);
-// 	}
-
-// 	Fid_t fn = OpenNull();
-// 	ASSERT(fn!=-1);
-
-// 	test_read(fn);
-// 	ASSERT(Write(fn, NULL, 123456)==123456);
-
-// 	ASSERT(Close(fn)==0);
-// 	return 0;
-// }
-
-
-
-// /***********************************************************************************8
-// *************************************************/
-
-
-
-
-// void checked_write(Fid_t fid, const char* message)
-// {
-// 	int mlen = strlen(message);
-// 	for(int count=0; count < mlen;) {
-// 		int wno = Write(fid, message+count, 1);
-// 		ASSERT(wno>0);
-// 		count += wno;
-// 	}
-// }
-
-
-
-// BOOT_TEST(test_write_con,
-// 	"Test that we can write a few bytes to the console on terminal 0.",
-// 	.minimum_terminals = 1
-// 	)
-// {
-// 	assert(GetTerminalDevices()>0);
-// 	Fid_t fterm = OpenTerminal(0);
-// 	ASSERT(fterm!=NOFILE);
-
-// 	expect(0, "Hello");
-// 	checked_write(fterm, "Hello");
-// 	return 0;
-// }
-
-
-// BOOT_TEST(test_write_con_big,
-// 	"Test that we can write massively to the console on terminal 0.",
-// 	.minimum_terminals = 1
-// 	)
-// {
-// 	assert(GetTerminalDevices()>0);
-// 	Fid_t fterm = OpenTerminal(0);
-// 	ASSERT(fterm!=NOFILE);
-
-// 	char bytes[1025];
-// 	FUDGE(bytes);
-// 	bytes[1024]='\0';
-
-// 	/* send me 1Mbyte */
-// 	for(int i=0; i<1024; i++)
-// 		expect(0, bytes);
-
-// 	/* Create a 16kb block */
-// 	char buffer[16384];
-// 	FUDGE(buffer);
-
-// 	int total = 1<<20;
-// 	int count = 0;
-
-// 	while(count < total)
-// 	{
-// 		int remain = total-count;
-
-// 		int rc = Write(fterm, buffer, (remain<16384)? remain: 16384);
-// 		ASSERT(rc>0);
-// 		count += rc;
-// 	}
-
-// 	return 0;
-// }
-
-
-
-// BOOT_TEST(test_write_error_on_bad_fid,
-// 	"Test that Write will return an error when called on a bad fid"
-// 	)
-// {
-// 	char buffer[10];
-// 	ASSERT(Write(0, buffer, 10)==-1);
-// 	return 0;
-// }
-
-
-// BOOT_TEST(test_write_to_many_terminals,
-// 	"Test that Write can send to all terminals",
-// 	.minimum_terminals = 2
-// 	)
-// {
-// 	Fid_t term[MAX_TERMINALS];
-// 	for(uint i = 0; i < GetTerminalDevices(); i++) {
-// 		term[i] = OpenTerminal(i);
-// 		ASSERT(term[i]!=NOFILE);
-// 	}
-
-// 	for(uint i = 0; i < GetTerminalDevices(); i++) {
-// 		char message[32];
-// 		sprintf(message, "This is terminal %d", i);
-
-// 		expect(i, message);
-// 	}
-// 	for(uint i = 0; i < GetTerminalDevices(); i++) {
-// 		char message[32];
-// 		sprintf(message, "This is terminal %d", i);
-
-// 		checked_write(term[i], message);
-// 	}
-
-
-// 	return 0;
-// }
-
-
-
-
-// TEST_SUITE(basic_tests, 
-// 	"A suite of basic tests, focusing on the functional behaviour of the\n"
-// 	"tinyos3 API, but not the operational (concurrency and I/O multiplexing)."
-// 	)
-// {
-// 	&test_boot,
-// 	&test_pid_of_init_is_one,
-// 	&test_waitchild_error_on_nonchild,
-// 	&test_waitchild_error_on_invalid_pid,
-// 	&test_exec_getpid_wait,
-// 	&test_exec_copies_arguments,
-// 	&test_exit_returns_status,
-// 	&test_main_return_returns_status,
-// 	&test_wait_for_any_child,
-// 	&test_orphans_adopted_by_init,
-// 	&test_cond_timedwait_timeout,
-// 	&test_cond_timedwait_signal,
-// 	&test_cond_timedwait_broadcast,
-// 	&test_null_device,
-// 	&test_get_terminals,
-// 	&test_open_terminals,
-// 	&test_dup2_error_on_nonfile,
-// 	&test_dup2_error_on_invalid_fid,
-// 	&test_dup2_copies_file,
-// 	&test_close_error_on_invalid_fid,
-// 	&test_close_success_on_valid_nonfile_fid,
-// 	&test_close_terminals,
-// 	&test_read_kbd,
-// 	&test_read_kbd_big,
-// 	&test_read_error_on_bad_fid,
-// 	&test_read_from_many_terminals,
-// 	&test_write_con,
-// 	&test_write_con_big,
-// 	&test_write_error_on_bad_fid,
-// 	&test_write_to_many_terminals,
-// 	&test_child_inherits_files,
-// 	NULL
-// };
-
-
-
-// /*********************************************
-//  *
-//  *
-//  *
-//  *  Thread tests
-//  *
-//  *
-//  *
-//  *********************************************/
-
-
-
-
-// BOOT_TEST(test_create_join_thread,
-// 	"Test that a process thread can be created and joined. Also, that "
-// 	"the argument of the thread is passed correctly."
-// 	)
-// {
-// 	int flag = 0;
 
 // 	int task(int argl, void* args) {
-// 		ASSERT(args == &flag);
-// 		*(int*)args = 1;
+// 		fibo(45);
 // 		return 2;
 // 	}
 
-// 	Tid_t t = CreateThread(task, sizeof(flag), &flag);
-// 	ASSERT(t!=NOTHREAD);
-// 	int exitval;
-// 	ASSERT(ThreadJoin(t, &exitval)==0);
-// 	ASSERT(flag==1);
+// 	int mthread(int argl, void* args){
+// 		for(int i=0;i<5;i++)
+// 			ASSERT(CreateThread(task, 0, NULL) != NOTHREAD);
+
+// 		fibo(35);
+// 		return 0;
+// 	}
+
+// 	Exec(mthread, 0, NULL);
+// 	ASSERT(WaitChild(NOPROC, NULL)!=NOPROC);
+
 // 	return 0;
 // }
 
 
-// // BOOT_TEST(test_exit_many_threads,
-// // 	"Test that a process thread calling Exit will clean up correctly."
-// // 	)
-// // {
-
-// // 	int task(int argl, void* args) {
-// // 		fibo(45);
-// // 		return 2;
-// // 	}
-
-// // 	int mthread(int argl, void* args){
-// // 		for(int i=0;i<5;i++)
-// // 			ASSERT(CreateThread(task, 0, NULL) != NOTHREAD);
-
-// // 		fibo(35);
-// // 		return 0;
-// // 	}
-
-// // 	Exec(mthread, 0, NULL);
-// // 	ASSERT(WaitChild(NOPROC, NULL)!=NOPROC);
-
-// // 	return 0;
-// // }
 
 
 
 
-
-
-// TEST_SUITE(thread_tests, 
-// 	"A suite of tests for threads."
-// 	)
-// {
-// 	&test_create_join_thread,
-// 	//&test_exit_many_threads,
-// 	NULL
-// };
+TEST_SUITE(thread_tests, 
+	"A suite of tests for threads."
+	)
+{
+	&test_create_join_thread,
+	//&test_exit_many_threads,
+	NULL
+};
 
 
 
@@ -1226,11 +1226,13 @@ void connect_sockets(Fid_t sock1, Fid_t lsock, Fid_t* sock2, port_t port)
 {
 	int accept_thread(int argl, void* args) {
 		*sock2 = Accept(lsock);
+		fprintf(stderr, "%s%d\n", "*sock2=", *sock2 );
 		ASSERT(*sock2 != NOFILE);
 		return 0;
 	}
 	int connect_thread(int argl, void* args) {
 		ASSERT(Connect(sock1, port, 1000)==0);
+		// fprintf(stderr, "%s %d\n","PONOS Epipedoylhdessssssss", 69);
 		return 0;
 	}
 
@@ -1239,8 +1241,9 @@ void connect_sockets(Fid_t sock1, Fid_t lsock, Fid_t* sock2, port_t port)
 	t2 = CreateThread(connect_thread, 0, NULL);
 	ASSERT(t1!=NOTHREAD);
 	ASSERT(t2!=NOTHREAD);
-	ASSERT(ThreadJoin(t1, NULL)==0);
+	ASSERT(ThreadJoin(t1, NULL)==0); //h threadjoin epistrefei panta -1
 	ASSERT(ThreadJoin(t2, NULL)==0);
+	// fprintf(stderr, "%s %d\n","PONOS Epipedoylhdessssssss", 69);
 
 }
 void check_transfer(Fid_t from, Fid_t to)
@@ -1336,9 +1339,12 @@ BOOT_TEST(test_listen_fails_on_initialized_socket,
 	ASSERT(Listen(lsock)==-1);	
 	Fid_t sock[2];
 	sock[0] = Socket(200);
+
 	connect_sockets(sock[0], lsock, sock+1, 100);
 	ASSERT(Listen(sock[0])==-1);
+	// fprintf(stderr, "%s %d\n","PONOS epiepdoulhdessssssss", 69);
 	ASSERT(Listen(sock[1])==-1);
+	// fprintf(stderr, "%s %d\n","PONOS SFAIROYLHDESSSSSSSSS", 69);
 	return 0;
 }
 
@@ -1352,6 +1358,8 @@ BOOT_TEST(test_accept_succeds,
 	Fid_t cli = Socket(NOPORT);
 	Fid_t srv;
 	connect_sockets(cli, lsock, &srv, 100);
+
+	// fprintf(stderr, "%s %d\n","PONOS succeeds", 69);
 	return 0;
 }
 
@@ -1759,11 +1767,11 @@ TEST_SUITE(socket_tests,
 	&test_connect_fails_on_timeout,
 
 	&test_socket_small_transfer,
-	&test_socket_single_producer,
-	&test_socket_multi_producer,
+	// &test_socket_single_producer,
+	// &test_socket_multi_producer,
 
-	&test_shudown_read,
-	&test_shudown_write,
+	// &test_shudown_read,
+	// &test_shudown_write,
 
 	NULL
 };
@@ -2110,7 +2118,7 @@ TEST_SUITE(all_tests,
 	//&concurrency_tests,
 	//&io_tests,
 	// &thread_tests,
-	&pipe_tests,
+	// &pipe_tests,
 	&socket_tests,
 	NULL
 };

@@ -127,6 +127,8 @@ typedef struct process_thread_control_block
 
   int is_exited; // 1 -> is exited | 0 -> is not exited
 
+  int ref_counter;
+
   //task
   Task main_task;
   //argl
@@ -141,7 +143,7 @@ typedef struct process_thread_control_block
 } PTCB;
 
 PTCB* create_PTCB(Task task, int argl, void* args, PCB* pcb); //
-
+void release_PTCB(PTCB* ptcb);
 /** Thread stack size */
 #define THREAD_STACK_SIZE  (128*1024)
 

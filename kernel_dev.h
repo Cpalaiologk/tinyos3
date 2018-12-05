@@ -36,7 +36,8 @@
 */
 
 typedef struct pipe_control_block{
-  char *buf;
+  //char *buf;
+  char buf[BUFFER_SIZE];
   int is_closed_read;
   int is_closed_write;
   int r_index;
@@ -44,6 +45,8 @@ typedef struct pipe_control_block{
   CondVar empty; //read
   CondVar full; //write
 } P_CB;
+
+P_CB* construct_pipe(Fid_t fid_0, Fid_t fid_1, pipe_t* pipe);
 
 typedef struct socket_control_block SCB;
 
@@ -68,6 +71,7 @@ typedef struct listener_socket_control_block
 
 struct socket_control_block{
   FCB * fcb;
+  Fid_t fid;
   socket_type s_type;
   port_t port;
   int ref_counter;

@@ -152,16 +152,19 @@ int sys_ThreadJoin(Tid_t tid, int* exitval)
     if(exitval!=NULL){//Save exit value
       *exitval=ptcb->exitval; //
       // Mutex_Unlock(&CURPROC->ptcb_mx);
-      return 0;
     }
-
+    int ret;
     if( (ptcb->ref_counter<=0) && (ptcb->is_exited==1) ) 
     {
       // fprintf(stderr, "%s%d\n", "in JOIN() before delete_PTCB(), ref_counter:", ptcb->ref_counter);
       release_PTCB(ptcb);
 
-      return 0; // Success
+      ret = 0;
+    }else if ( ptcb == NULL || ptcb == CURPTHREAD ||  ptcb->is_detached == 1 )
+    {
+      ret = -1;
     }
+    return ret;
   }
 
   // Isws 8elei if is exited kai na kanoyme mesa release to thread ama mpei

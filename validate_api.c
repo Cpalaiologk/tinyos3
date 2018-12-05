@@ -1,4 +1,3 @@
-
 #include <assert.h>
 #include <unistd.h>
 #include <sys/time.h>
@@ -21,7 +20,6 @@
 
 /*
 	test_boot
-
 	Test that the boot function executes the boot task and returns.
  */
 
@@ -941,29 +939,29 @@ BOOT_TEST(test_create_join_thread,
 }
 
 
-// BOOT_TEST(test_exit_many_threads,
-// 	"Test that a process thread calling Exit will clean up correctly."
-// 	)
-// {
+BOOT_TEST(test_exit_many_threads,
+	"Test that a process thread calling Exit will clean up correctly."
+	)
+{
 
-// 	int task(int argl, void* args) {
-// 		fibo(45);
-// 		return 2;
-// 	}
+	int task(int argl, void* args) {
+		fibo(40);
+		return 2;
+	}
 
-// 	int mthread(int argl, void* args){
-// 		for(int i=0;i<5;i++)
-// 			ASSERT(CreateThread(task, 0, NULL) != NOTHREAD);
+	int mthread(int argl, void* args){
+		for(int i=0;i<5;i++)
+			ASSERT(CreateThread(task, 0, NULL) != NOTHREAD);
 
-// 		fibo(35);
-// 		return 0;
-// 	}
+		fibo(35);
+		return 0;
+	}
 
-// 	Exec(mthread, 0, NULL);
-// 	ASSERT(WaitChild(NOPROC, NULL)!=NOPROC);
+	Exec(mthread, 0, NULL);
+	ASSERT(WaitChild(NOPROC, NULL)!=NOPROC);
 
-// 	return 0;
-// }
+	return 0;
+}
 
 
 
@@ -975,7 +973,7 @@ TEST_SUITE(thread_tests,
 	)
 {
 	&test_create_join_thread,
-	//&test_exit_many_threads,
+	&test_exit_many_threads,
 	NULL
 };
 
@@ -1226,13 +1224,12 @@ void connect_sockets(Fid_t sock1, Fid_t lsock, Fid_t* sock2, port_t port)
 {
 	int accept_thread(int argl, void* args) {
 		*sock2 = Accept(lsock);
-		fprintf(stderr, "%s%d\n", "*sock2=", *sock2 );
+		fprintf(stderr, "%s %d\n", "sock2 =", *sock2);
 		ASSERT(*sock2 != NOFILE);
 		return 0;
 	}
 	int connect_thread(int argl, void* args) {
 		ASSERT(Connect(sock1, port, 1000)==0);
-		// fprintf(stderr, "%s %d\n","PONOS Epipedoylhdessssssss", 69);
 		return 0;
 	}
 
@@ -1241,9 +1238,8 @@ void connect_sockets(Fid_t sock1, Fid_t lsock, Fid_t* sock2, port_t port)
 	t2 = CreateThread(connect_thread, 0, NULL);
 	ASSERT(t1!=NOTHREAD);
 	ASSERT(t2!=NOTHREAD);
-	ASSERT(ThreadJoin(t1, NULL)==0); //h threadjoin epistrefei panta -1
+	ASSERT(ThreadJoin(t1, NULL)==0);
 	ASSERT(ThreadJoin(t2, NULL)==0);
-	// fprintf(stderr, "%s %d\n","PONOS Epipedoylhdessssssss", 69);
 
 }
 void check_transfer(Fid_t from, Fid_t to)
@@ -1339,12 +1335,9 @@ BOOT_TEST(test_listen_fails_on_initialized_socket,
 	ASSERT(Listen(lsock)==-1);	
 	Fid_t sock[2];
 	sock[0] = Socket(200);
-
 	connect_sockets(sock[0], lsock, sock+1, 100);
 	ASSERT(Listen(sock[0])==-1);
-	// fprintf(stderr, "%s %d\n","PONOS epiepdoulhdessssssss", 69);
 	ASSERT(Listen(sock[1])==-1);
-	// fprintf(stderr, "%s %d\n","PONOS SFAIROYLHDESSSSSSSSS", 69);
 	return 0;
 }
 
@@ -1358,8 +1351,6 @@ BOOT_TEST(test_accept_succeds,
 	Fid_t cli = Socket(NOPORT);
 	Fid_t srv;
 	connect_sockets(cli, lsock, &srv, 100);
-
-	// fprintf(stderr, "%s %d\n","PONOS succeeds", 69);
 	return 0;
 }
 
@@ -1406,6 +1397,8 @@ BOOT_TEST(test_accept_reusable,
 	uint n = MAX_FILEID/2 - 1;
 	Fid_t cli[n], srv[n];
 
+	fprintf(stderr, "%s %d\n", "lsock =", lsock);
+	
 	for(uint i=0;i<n;i++) {
 		cli[i] = Socket(NOPORT);
 		connect_sockets(cli[i], lsock, srv+i, 100);
@@ -1767,11 +1760,11 @@ TEST_SUITE(socket_tests,
 	&test_connect_fails_on_timeout,
 
 	&test_socket_small_transfer,
-	// &test_socket_single_producer,
-	// &test_socket_multi_producer,
+	&test_socket_single_producer,
+	&test_socket_multi_producer,
 
-	// &test_shudown_read,
-	// &test_shudown_write,
+	&test_shudown_read,
+	&test_shudown_write,
 
 	NULL
 };
@@ -2114,11 +2107,11 @@ TEST_SUITE(io_tests,
 TEST_SUITE(all_tests,
 	"A suite containing all tests.")
 {
-	// &basic_tests,
+	&basic_tests,
 	//&concurrency_tests,
 	//&io_tests,
-	// &thread_tests,
-	// &pipe_tests,
+	&thread_tests,
+	&pipe_tests,
 	&socket_tests,
 	NULL
 };
@@ -2162,6 +2155,3 @@ int main(int argc, char** argv)
 	register_test(&user_tests);
 	return run_program(argc, argv, &all_tests);
 }
-
-
-

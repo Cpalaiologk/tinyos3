@@ -28,13 +28,31 @@ file_ops write_ops = {
 };
 //ayta den ta exw alla3ei
 
+P_CB* construct_pipe(Fid_t fid_0, Fid_t fid_1, pipe_t* pipe)
+{
+  P_CB* pipe_cb = (P_CB*) malloc(sizeof(P_CB));
+  // pipe_cb->buf = (char*) malloc(BUFFER_SIZE);
+
+  pipe->read = fid_0;
+  pipe->write = fid_1;
+
+  pipe_cb->is_closed_write = 0;
+  pipe_cb->is_closed_read = 0;
+  pipe_cb->w_index = 0;
+  pipe_cb->r_index = 0;
+  pipe_cb->full = COND_INIT;
+  pipe_cb->empty = COND_INIT;
+
+  return pipe_cb;
+}
+
 int sys_Pipe(pipe_t* pipe)
 {
 	Fid_t fid[2];
 	FCB* fcb[2];
 
 	P_CB* p = (P_CB*) malloc(sizeof(P_CB));
- 	p->buf = (char*) malloc(BUFFER_SIZE);
+ 	//p->buf = (char*) malloc(BUFFER_SIZE);
 
 
 	// Reserve 2 FCBs //mporoyme na to kanoyme me pinaka
@@ -107,7 +125,7 @@ int read_op(void* t, char *buf, unsigned int size){
   				// fprintf(stderr, "%s\n","While 2");
   			if((counter == size) || (counter == BUFFER_SIZE) ) 
   			{
-  					fprintf(stderr, "%s %d\n","to BUFFER_SIZE einai -->", BUFFER_SIZE);
+  					// fprintf(stderr, "%s %d\n","to BUFFER_SIZE einai -->", BUFFER_SIZE);
   				return counter;
   			} 
   			buf[counter]= p_cb->buf[p_cb->r_index];
@@ -210,8 +228,8 @@ int r_Close(void* streamobj)
 		//kernel_broadcast(& pipe_cb->hasSpace); 
 		if(p_cb->is_closed_write)
 		{
-			free(p_cb->buf);
-			free(p_cb); 
+		//	free(p_cb->buf);
+			//free(p_cb); 
 			p_cb = NULL;
 		}
 		return 0;
@@ -230,8 +248,8 @@ int w_Close(void* streamobj)
 		// kernel_broadcast(& pipe_cb->hasData); 
 		if(p_cb->is_closed_read)
 		{
-			free(p_cb->buf);
-			free(p_cb); 
+			//free(p_cb->buf);
+			//free(p_cb); 
 			p_cb = NULL;
 		}
 		return 0;

@@ -43,12 +43,15 @@ Fid_t sys_Socket(port_t port)
 	  }
 	  SCB* scb = malloc(sizeof(SCB));
   	  scb->ref_counter = 0;
+  	  scb->fid = fid[0]; 
   	  scb->fcb = get_fcb(fid[0]);  	 
   	  fcb[0]->streamobj = scb;
   	  fcb[0]->streamfunc = & socket_ops;
   	  
   	  // If port == NOPORT, bound socket to it
-  	  scb->port = port;
+  	  if(port != NOPORT){
+  	 	 scb->port = port;
+  	  }
   	  
   	  scb->s_type = UNBOUND;
   	  //SCB->unbound_socket.req_node = NULL; //request node initialize
@@ -85,14 +88,14 @@ int s_op_Write(void* socket,const char *buf,  unsigned int size){
 }
 int s_op_Close(void* streamobj){ //aythn k merikes alles isws tis kanoyme void
 	if(streamobj!=NULL){
-		fprintf(stderr, "%s\n","KALHSPERAAAAAAAA" );
+		// fprintf(stderr, "%s\n","KALHSPERAAAAAAAA" );
 		SCB* scb = (SCB*) streamobj;
 
 		if( (scb->s_type == PEER) ){
 			int rc = r_Close(scb->peer.receiver); //isws tis kanoyme void giati de mas xreiazontai oi times epistrofhs toys
 			int wc = w_Close(scb->peer.sender);
 			if(!(rc && wc)){ //isws trollies
-		fprintf(stderr, "%s\n","ifffffffffffffffff" );
+		// fprintf(stderr, "%s\n","ifffffffffffffffff" );
 				return -1;
 			}
 		}
@@ -121,6 +124,7 @@ int sys_Listen(Fid_t sock)
 
 			return 0;
 		}
+		//return -1;
 	}
 	return -1;
 }
@@ -129,6 +133,8 @@ int sys_Listen(Fid_t sock)
 Fid_t sys_Accept(Fid_t lsock)
 {
 	FCB* fcb = get_fcb(lsock);
+
+	// fprintf(stderr, "%s %d\n", );
 
 	if(fcb!=NULL && fcb->streamfunc != NULL)
 	{	
@@ -150,11 +156,11 @@ Fid_t sys_Accept(Fid_t lsock)
 			FCB* fcb = get_fcb(peer2_fid);
 			SCB* peer2 = fcb->streamobj;
 
-			// fprintf(stderr, "%s %d\n","PONOS SFAIROYLHDESSSSSSSSS", 69);
 			// Fetch client_socket_cb from lsock's queue
 			rlnode* rl_req_node = rlist_pop_front(& scb->listener.queue);
 			reqnode* req_node = rl_req_node->obj;
 			SCB* peer1 = req_node->req_from;
+			Fid_t peer1_fid = peer1->fid;
 
 			if(peer1 == NULL || peer2 == NULL )
 			{	
@@ -162,32 +168,31 @@ Fid_t sys_Accept(Fid_t lsock)
 				return NOFILE;
 			}
 
-			// fprintf(stderr, "%s %d\n","PONOS SFAIROYLHDESSSSSSSSS", 6969);
 
 			pipe_t pipe1;
 			pipe_t pipe2;
-
-			// fprintf(stderr, "%s %d\n","PONOS SFAIROYLHDESSSSSSSSS", 777);
-			sys_Pipe(& pipe1);
-			// fprintf(stderr, "%s %d\n","PONOS SFAIROYLHDESSSSSSSSS", 11111111);
-			sys_Pipe(& pipe2);
-
+			P_CB* pipe_cb1 = construct_pipe(peer1_fid,peer2_fid,& pipe1);
+			P_CB* pipe_cb2 = construct_pipe(peer2_fid,peer1_fid,& pipe2);
+			//na to doume 
+			// sys_Pipe(& pipe1);
+			// sys_Pipe(& pipe2);
+/*
 			fprintf(stderr, "%s %d\n","to pipe1.read einai -->", pipe1.read);
 			fprintf(stderr, "%s %d\n","to pipe1.write einai -->", pipe1.write);
-
-			FCB* fcb1 = get_fcb(pipe1.read);
-			FCB* fcb3 = get_fcb(pipe1.write);
-			FCB* fcb2 = get_fcb(pipe2.read);
+*/
+			// FCB* fcb1 = get_fcb(pipe1.read);
+			//FCB* fcb3 = get_fcb(pipe1.write);
+			// FCB* fcb2 = get_fcb(pipe2.read);
 
 			// fprintf(stderr, "%s %d\n","to fcb->refcount einai -->", fcb->refcount);
 
-			P_CB* pipe_cb1 = fcb1->streamobj;
-			P_CB* pipe_cb2 = fcb2->streamobj;
-			P_CB* pipe_cb3 = fcb3->streamobj;
+			// P_CB* pipe_cb1 = fcb1->streamobj;
+			// P_CB* pipe_cb2 = fcb2->streamobj;
+			//P_CB* pipe_cb3 = fcb3->streamobj;
 			
-			fprintf(stderr, "%s %d\n","to pipe_cb1 einai -->", pipe_cb1);
+			/*fprintf(stderr, "%s %d\n","to pipe_cb1 einai -->", pipe_cb1);
 			fprintf(stderr, "%s %d\n","to pipe_cb3 einai -->", pipe_cb3);
-
+*/
 			if((pipe_cb1 != NULL) && (pipe_cb2 != NULL)) {
 				// Convert server socket to PEER
 				peer2->s_type = PEER;
@@ -207,9 +212,10 @@ Fid_t sys_Accept(Fid_t lsock)
 			kernel_signal(& req_node->cv); //signal???
 			//fprintf(stderr, "%s\n", "broadcasted connect cv." );
 
-			fprintf(stderr, "%s\n", "returning OK from Accept()" );
+			// fprintf(stderr, "%s\n", "returning OK from Accept()" );
 			return peer2_fid;
 		}
+		return NOFILE;
 	}	
 	
 	//fprintf(stderr, "%s\n", "returning NOFILE" );
@@ -219,13 +225,16 @@ Fid_t sys_Accept(Fid_t lsock)
 
 int sys_Connect(Fid_t sock, port_t port, timeout_t timeout)
 {
+	// fprintf(stderr, "%s\n","Mphkame sth synarthsh Connect" );
 	FCB* fcb = get_fcb(sock);
 	int timeout_not_expired;
 	if((fcb!=NULL) && (fcb->streamfunc!=NULL) && (port>NOPORT && port<=MAX_PORT) ) {
 		SCB* client1 = fcb->streamobj;
 		SCB* listener = PORT_MAP[port];
+		// fprintf(stderr, "%s\n","Mphkame sthn prwth if" );
 
-		if((client1->s_type == UNBOUND) && (listener->s_type == LISTENER)){
+		if((client1->s_type == UNBOUND) && (listener!=NULL) && (PORT_MAP[port]->s_type == LISTENER)) {
+			// fprintf(stderr, "%s\n","Mphkame sthn if poy gyrnaei 0" );
 			reqnode* req_node = malloc(sizeof(reqnode));
 			req_node->req_from = client1;
 		  	rlnode_init(& req_node->rl_node, req_node);
@@ -243,7 +252,7 @@ int sys_Connect(Fid_t sock, port_t port, timeout_t timeout)
 
 				if(!timeout_not_expired) //an den egine expired rip
 				{
-					fprintf(stderr, "%s\n", "fail mesa sthn if" );
+					// fprintf(stderr, "%s\n", "fail mesa sthn if" );
 					return -1;
 				}
 				// else{
@@ -255,11 +264,8 @@ int sys_Connect(Fid_t sock, port_t port, timeout_t timeout)
 			req_node = NULL;
 			return 0;
 		}
+		// fprintf(stderr, "%s\n","bghkame apo thn prwth if" );
 
-/*
-			free(req_node);
-			req_node = NULL;*/
-			// return 0;
 	}
 	return -1;
 }
@@ -267,6 +273,34 @@ int sys_Connect(Fid_t sock, port_t port, timeout_t timeout)
 
 int sys_ShutDown(Fid_t sock, shutdown_mode how)
 {
+	FCB* fcb = get_fcb(sock);
+
+	if((fcb!=NULL) && (fcb->streamfunc==& socket_ops) && (how>=1 && how<=3) )
+	{
+		SCB* scb = fcb->streamobj;
+
+		if((scb!=NULL) && (scb->s_type == PEER))
+		{	
+			if(how == 1){
+				return r_Close(scb->peer.receiver); 
+			}
+		  	else if(how == 2){
+		   		return w_Close(scb->peer.sender);  
+		    }
+		    else if(how == 3){
+			   	int ret1 = r_Close(scb->peer.receiver);
+			    int ret2 = w_Close(scb->peer.sender);
+
+			    if((ret1 == 1) && (ret2 == 1)){
+			    	return 0;
+			    }
+			    else{
+			    	return -1;
+			    }
+		    }
+		}
+	}
+
 	return -1;
 }
 

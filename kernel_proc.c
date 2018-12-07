@@ -14,7 +14,7 @@
  - GetPPid
 
  */
-
+static int pid_index = 2;
 /* The process table */
 PCB PT[MAX_PROC];
 unsigned int process_count;
@@ -357,8 +357,110 @@ void sys_Exit(int exitval)
 
 
 
-Fid_t sys_OpenInfo()
+
+int procinfo_Close(void* this)
 {
-	return NOFILE;
+  procinfo* proc_cb = (procinfo*) this;
+  if(proc_cb!=NULL) {   
+    free(proc_cb);
+    proc_cb = NULL;
+
+    return 0;
+  }
+
+  return -1;
 }
 
+int procinfo_Read(void* this, char *buf, unsigned int size)
+{
+   // Default beginning //static 
+  procinfo* proc_cb = (procinfo*) this;
+  
+  // PCB* cur_pcb;
+  Pid_t cur_pid; 
+  Pid_t cur_ppid;
+  // pid_state papapap = FREE;
+  /*
+     Get next valid pcb 
+  */
+
+  // fprintf(stderr, "%s %d\n", "To state einai -->", papapap);
+  while(1){ //cur_pcb->pstate == FREE;
+
+    if(pid_index==MAX_PROC)
+    {
+      fprintf(stderr, "%s\n", "reached MAX_PROC" );
+      
+      pid_index = 2; // Reset index
+      return -1;
+    }
+    // cur_pcb = get_pcb(pid);
+    pid_index++;
+
+    // fprintf(stderr, "%s %d\n", "To state einai -->", cur_pcb->pstate);
+
+    if(PT[pid_index-1].pstate!=FREE){
+      break;
+    }
+  }
+
+  cur_ppid = get_pid(PT[pid_index-1].parent);
+  cur_pid = (pid_index-1); // Give previous since incr in loop
+
+  /*
+     Init proc_cb
+  */
+  // proc_cb->pcb = cur_pcb; //isws baloyme curproc edw
+  proc_cb->pid = cur_pid;
+  proc_cb->ppid = cur_ppid; 
+
+  if(PT[pid_index-1].pstate==ZOMBIE){
+    proc_cb->alive = 0;
+  }
+  else{
+    proc_cb->alive = 1;
+  }
+  proc_cb->thread_count = rlist_len(& PT[pid_index-1].PTCB_list);
+  fprintf(stderr, "%s%lu\n", "thread_count:", proc_cb->thread_count);
+  proc_cb->main_task = PT[pid_index-1].main_task;
+  proc_cb->argl = PT[pid_index-1].argl;
+  
+  // Copy specific # bytes
+  memcpy(proc_cb->args, PT[pid_index-1].args, PROCINFO_MAX_ARGS_SIZE);
+  // Copy info block into buf
+  memcpy(buf, proc_cb, size);
+
+  return size;  
+  
+}
+
+// allagmena 
+file_ops info_ops = {
+  //.Open = NULL,
+  .Read = procinfo_Read,
+  .Write = Wnothing,
+  .Close = procinfo_Close
+};
+
+
+Fid_t sys_OpenInfo()
+{ 
+  Fid_t fid[1];
+  FCB* fcb[1];
+
+  int fids_ok = FCB_reserve(1, fid, fcb);
+  // File ids exhausted
+  if(!fids_ok)
+    return NOFILE;
+  
+  procinfo* info_cb = malloc(sizeof(procinfo));
+
+  if(info_cb==NULL){
+      return NOFILE;
+  }
+
+  fcb[0]->streamobj = info_cb;
+  fcb[0]->streamfunc = & info_ops;
+      
+  return fid[0];
+}

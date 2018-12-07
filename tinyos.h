@@ -721,7 +721,8 @@ typedef struct procinfo
 	Pid_t ppid;     /**< @brief The parent pid of the process.
 
                 This is equal to NOPROC for parentless procs. */
-  
+  // PCB* pcb;
+
   int alive;      /**< @brief Non-zero if process is alive, zero if process is zombie. */
 	
   unsigned long thread_count; /**< Current no of threads. */
@@ -761,7 +762,7 @@ typedef struct procinfo
  */
 Fid_t OpenInfo();
 
-
+int Wnothing(void* this, const char* buf, unsigned int size);
 
 
 /*******************************************
